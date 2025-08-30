@@ -16,9 +16,10 @@ export const metadata: Metadata = {
 
 const bodyStyles = {
   display: 'flex',
-  flexDirection: 'column',
+  FlexDirection: 'column',
   justifyItems: 'center',
-  alignItems: 'center'
+  alignItems: 'center',
+  width: '100vw'
 }
 
 export default function RootLayout({

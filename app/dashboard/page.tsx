@@ -15,7 +15,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardHeader user={session.user} />
+      <DashboardHeader />
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="generate" className="space-y-6">

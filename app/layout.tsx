@@ -3,8 +3,8 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
-import { SessionProvider } from "next-auth/react"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Providers } from "@/components/providers"
 import { Suspense } from "react"
 import "./globals.css"
 
@@ -12,6 +12,13 @@ export const metadata: Metadata = {
   title: "Document Template Manager",
   description: "Create and manage professional document templates",
   generator: "v0.app",
+}
+
+const bodyStyles = {
+  display: 'flex',
+  flexDirection: 'column',
+  justifyItems: 'center',
+  alignItems: 'center'
 }
 
 export default function RootLayout({
@@ -23,11 +30,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <Suspense fallback={null}>
-          <SessionProvider>
+          <Providers>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
               {children}
             </ThemeProvider>
-          </SessionProvider>
+          </Providers>
         </Suspense>
         <Analytics />
       </body>

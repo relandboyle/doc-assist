@@ -1,10 +1,12 @@
 import { auth } from "@/auth"
 import { NextResponse } from "next/server"
 
-export default auth((req) => {
-  if (!req.auth && req.nextUrl.pathname.startsWith("/dashboard")) {
+export default auth((req: any) => {
+  const isLoggedIn = !!req.auth
+  if (!isLoggedIn && req.nextUrl.pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/login", req.url))
   }
+  return null
 })
 
 export const config = {

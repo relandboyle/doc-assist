@@ -22,7 +22,7 @@ interface FolderSetupDialogProps {
 
 export function FolderSetupDialog({ open, onOpenChange }: FolderSetupDialogProps) {
   const [setupMethod, setSetupMethod] = useState<"new" | "existing">("new")
-  const [folderName, setFolderName] = useState("DocuTemplate Pro Templates")
+  const [folderName, setFolderName] = useState("DocTailor Templates")
   const [existingFolderId, setExistingFolderId] = useState("")
 
   const handleSetup = () => {

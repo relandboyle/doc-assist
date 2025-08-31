@@ -8,10 +8,19 @@ export async function getGoogleApiClient() {
     throw new Error("No access token available")
   }
 
-  const oauth2Client = new google.auth.OAuth2()
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  )
+
   oauth2Client.setCredentials({
     access_token: session.accessToken,
   })
+
+  // Set the API key for additional quota and public data access
+  if (process.env.GOOGLE_API_KEY) {
+    oauth2Client.apiKey = process.env.GOOGLE_API_KEY
+  }
 
   return oauth2Client
 }

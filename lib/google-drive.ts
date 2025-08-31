@@ -16,7 +16,8 @@ export interface DriveFile {
 }
 
 export class GoogleDriveService {
-  private static async getDrive() {
+  // Changed from private to public since it's used by GoogleDocsService
+  public static async getDrive() {
     return await getDriveClient()
   }
 
@@ -38,12 +39,12 @@ export class GoogleDriveService {
     return {
       id: response.data.id!,
       name: response.data.name!,
-      parents: response.data.parents,
+      parents: response.data.parents || undefined,
     }
   }
 
   // Setup the main template folder structure
-  static async setupTemplateFolders(mainFolderName = "DocuTemplate Pro Templates") {
+  static async setupTemplateFolders(mainFolderName = "DocTailor Templates") {
     try {
       // Create main folder
       const mainFolder = await this.createFolder(mainFolderName)
@@ -78,7 +79,7 @@ export class GoogleDriveService {
         id: file.id!,
         name: file.name!,
         mimeType: file.mimeType!,
-        parents: file.parents,
+        parents: file.parents || undefined,
         createdTime: file.createdTime || undefined,
         modifiedTime: file.modifiedTime || undefined,
       })) || []
@@ -97,7 +98,7 @@ export class GoogleDriveService {
     return {
       id: response.data.id!,
       name: response.data.name!,
-      parents: response.data.parents,
+      parents: response.data.parents || undefined,
     }
   }
 
@@ -114,7 +115,7 @@ export class GoogleDriveService {
       response.data.files?.map((file) => ({
         id: file.id!,
         name: file.name!,
-        parents: file.parents,
+        parents: file.parents || undefined,
       })) || []
     )
   }
@@ -136,7 +137,7 @@ export class GoogleDriveService {
       id: response.data.id!,
       name: response.data.name!,
       mimeType: response.data.mimeType!,
-      parents: response.data.parents,
+      parents: response.data.parents || undefined,
       createdTime: response.data.createdTime || undefined,
       modifiedTime: response.data.modifiedTime || undefined,
     }

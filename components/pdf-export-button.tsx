@@ -12,6 +12,7 @@ interface PdfExportButtonProps {
   variant?: "default" | "outline" | "ghost"
   size?: "default" | "sm" | "lg"
   showText?: boolean
+  showOpenInBrowser?: boolean
 }
 
 export function PdfExportButton({
@@ -20,6 +21,7 @@ export function PdfExportButton({
   variant = "outline",
   size = "default",
   showText = true,
+  showOpenInBrowser = false,
 }: PdfExportButtonProps) {
   const { data: session, status } = useSession()
   const [isExporting, setIsExporting] = useState(false)
@@ -110,15 +112,17 @@ export function PdfExportButton({
         {showText && <span className="ml-2">{isExporting ? "Exporting..." : "Download PDF"}</span>}
       </Button>
 
-      <Button
-        onClick={handleOpenPdfInBrowser}
-        variant="ghost"
-        size={size === "sm" ? "sm" : "default"}
-        className="px-2"
-        title="Open PDF in browser"
-      >
-        <ExternalLink className="h-4 w-4" />
-      </Button>
+      {showOpenInBrowser && (
+        <Button
+          onClick={handleOpenPdfInBrowser}
+          variant="ghost"
+          size={size === "sm" ? "sm" : "default"}
+          className="px-2"
+          title="Open PDF in browser"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   )
 }

@@ -119,7 +119,7 @@ export function DocumentHistory() {
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Open
                     </Button>
-                    <PdfExportButton documentId={doc.id} documentName={doc.name} variant="outline" size="sm" />
+                    <PdfExportButton documentId={doc.id} documentName={doc.name} variant="outline" size="sm" showOpenInBrowser={false} />
                   </div>
                 </div>
               </CardContent>
@@ -173,7 +173,7 @@ export function DocumentHistory() {
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Open
                     </Button>
-                    <PdfExportButton documentId={doc.id} documentName={doc.name} variant="outline" size="sm" />
+                    <PdfExportButton documentId={doc.id} documentName={doc.name} variant="outline" size="sm" showOpenInBrowser={false} />
                   </div>
                 </div>
               </CardContent>

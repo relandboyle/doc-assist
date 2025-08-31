@@ -339,15 +339,16 @@ function TemplateCard({ template, type, onGenerate }: TemplateCardProps) {
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-            <Button size="sm" variant="outline">
+            {/* <Button size="sm" variant="outline">
               <Copy className="h-4 w-4" />
-            </Button>
+            </Button> */}
             <PdfExportButton
               documentId={template.id}
               documentName={template.name}
               variant="outline"
               size="sm"
-              showText={false}
+              showText={true}
+              showOpenInBrowser={false}
             />
           </div>
         </div>

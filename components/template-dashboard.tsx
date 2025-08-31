@@ -193,17 +193,33 @@ export function TemplateDashboard() {
       </div>
 
       {/* Template Tabs */}
-      <Tabs defaultValue="resume" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 bg-muted">
-          <TabsTrigger value="resume" className="data-[state=active]:bg-background">
-            Resume Templates
+      <Tabs defaultValue="resume">
+        <TabsList className="mx-auto w-full max-w-xl px-0 pb-0 flex gap-2">
+          <TabsTrigger
+            value="resume"
+            className="rounded-t-md rounded-b-none px-4 py-1.5 text-sm font-medium text-muted-foreground border border-border transition -mb-px
+                       hover:bg-background/60 hover:text-foreground
+                       data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-transparent"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Resume Templates
+            </span>
           </TabsTrigger>
-          <TabsTrigger value="coverLetter" className="data-[state=active]:bg-background">
-            Cover Letter Templates
+          <TabsTrigger
+            value="coverLetter"
+            className="rounded-t-md rounded-b-none px-4 py-1.5 text-sm font-medium text-muted-foreground border border-border transition -mb-px
+                       hover:bg-background/60 hover:text-foreground
+                       data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-transparent"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Cover Letter Templates
+            </span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="resume" className="space-y-4">
+        <TabsContent value="resume" className="space-y-4 pt-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-foreground">Resume Templates</h2>
           </div>
@@ -230,7 +246,7 @@ export function TemplateDashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="coverLetter" className="space-y-4">
+        <TabsContent value="coverLetter" className="space-y-4 pt-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-foreground">Cover Letter Templates</h2>
           </div>

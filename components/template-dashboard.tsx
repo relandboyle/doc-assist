@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,28 +11,60 @@ import { CreateTemplateDialog } from "@/components/create-template-dialog"
 import { FolderSetupDialog } from "@/components/folder-setup-dialog"
 import { GenerateDocumentDialog } from "@/components/generate-document-dialog"
 import { PdfExportButton } from "@/components/pdf-export-button"
+import { FolderStatus } from "@/components/folder-status"
 import { useTemplateStore } from "@/lib/template-store"
 
 export function TemplateDashboard() {
+  const { data: session, status } = useSession()
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showFolderDialog, setShowFolderDialog] = useState(false)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
   const [selectedTemplateType, setSelectedTemplateType] = useState<"resume" | "coverLetter">("resume")
 
-  const { templates, folders, isLoading, fetchTemplates } = useTemplateStore()
+  const { templates, folders, isLoading, fetchTemplates, fetchFolders, initializeFromStorage } = useTemplateStore()
 
   useEffect(() => {
-    if (folders.resumeFolderId) {
+    // Only initialize from localStorage if user is authenticated
+    if (status === "authenticated") {
+      initializeFromStorage()
+    }
+  }, [initializeFromStorage, status])
+
+  useEffect(() => {
+    // Only fetch templates if user is authenticated and has folder IDs
+    if (status === "authenticated" && folders.resumeFolderId) {
       fetchTemplates(folders.resumeFolderId, "resume")
     }
-  }, [folders.resumeFolderId, fetchTemplates])
+  }, [folders.resumeFolderId, fetchTemplates, status])
 
   useEffect(() => {
-    if (folders.coverLetterFolderId) {
+    // Only fetch templates if user is authenticated and has folder IDs
+    if (status === "authenticated" && folders.coverLetterFolderId) {
       fetchTemplates(folders.coverLetterFolderId, "coverLetter")
     }
-  }, [folders.coverLetterFolderId, fetchTemplates])
+  }, [folders.coverLetterFolderId, fetchTemplates, status])
+
+  // Don't render anything if session is loading or not authenticated
+  if (status === "loading") {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Please sign in to access templates.</div>
+        </div>
+      </div>
+    )
+  }
 
   const handleCreateTemplate = (type: "resume" | "coverLetter") => {
     setSelectedTemplateType(type)
@@ -56,9 +89,13 @@ export function TemplateDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => setShowFolderDialog(true)} className="border-border hover:bg-accent">
+          <Button
+            variant={folders.mainFolderId ? "outline" : "default"}
+            onClick={() => setShowFolderDialog(true)}
+            className={folders.mainFolderId ? "border-border hover:bg-accent" : "bg-amber-500 hover:bg-amber-600 text-white"}
+          >
             <FolderOpen className="h-4 w-4 mr-2" />
-            Manage Folders
+            {folders.mainFolderId ? "Manage Folders" : "Setup Folders"}
           </Button>
           <Button
             onClick={() => handleCreateTemplate("resume")}
@@ -68,6 +105,11 @@ export function TemplateDashboard() {
             New Template
           </Button>
         </div>
+      </div>
+
+      {/* Folder Status */}
+      <div className="mb-8">
+        <FolderStatus onManageFolders={() => setShowFolderDialog(true)} />
       </div>
 
       {/* Stats Cards */}
@@ -219,7 +261,11 @@ export function TemplateDashboard() {
         templateType={selectedTemplateType}
       />
 
-      <FolderSetupDialog open={showFolderDialog} onOpenChange={setShowFolderDialog} />
+      <FolderSetupDialog
+        open={showFolderDialog}
+        onOpenChange={setShowFolderDialog}
+        onSetupComplete={fetchFolders}
+      />
 
       <GenerateDocumentDialog
         open={showGenerateDialog}

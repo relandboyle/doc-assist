@@ -120,6 +120,26 @@ export class GoogleDriveService {
     )
   }
 
+  // List all folders in user's Google Drive
+  static async listAllFolders(): Promise<DriveFolder[]> {
+    const drive = await this.getDrive()
+
+    const response = await drive.files.list({
+      q: `mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: "files(id, name, parents, createdTime, modifiedTime)",
+      orderBy: "name",
+      pageSize: 1000, // Adjust as needed
+    })
+
+    return (
+      response.data.files?.map((file) => ({
+        id: file.id!,
+        name: file.name!,
+        parents: file.parents || undefined,
+      })) || []
+    )
+  }
+
   // Copy a file
   static async copyFile(fileId: string, newName: string, parentId?: string): Promise<DriveFile> {
     const drive = await this.getDrive()

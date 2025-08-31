@@ -18,7 +18,21 @@ export async function POST(request: NextRequest) {
       if (!folderName) {
         return NextResponse.json({ error: "Folder name is required" }, { status: 400 })
       }
-      folders = await GoogleDriveService.setupTemplateFolders(folderName)
+      if (!existingFolderId) {
+        return NextResponse.json({ error: "Parent folder ID is required" }, { status: 400 })
+      }
+      // Create the main folder in the selected parent folder
+      const mainFolder = await GoogleDriveService.createFolder(folderName, existingFolderId)
+
+      // Create subfolders inside the main folder
+      const resumeFolder = await GoogleDriveService.createFolder("Resume Templates", mainFolder.id)
+      const coverLetterFolder = await GoogleDriveService.createFolder("Cover Letter Templates", mainFolder.id)
+
+      folders = {
+        mainFolder,
+        resumeFolder,
+        coverLetterFolder,
+      }
     } else if (method === "existing") {
       if (!existingFolderId) {
         return NextResponse.json({ error: "Existing folder ID is required" }, { status: 400 })

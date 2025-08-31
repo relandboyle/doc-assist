@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -40,7 +41,29 @@ const mockGeneratedDocuments: GeneratedDocument[] = [
 ]
 
 export function DocumentHistory() {
+  const { data: session, status } = useSession()
   const [documents] = useState<GeneratedDocument[]>(mockGeneratedDocuments)
+
+  // Don't render anything if session is loading or not authenticated
+  if (status === "loading") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Please sign in to view document history.</div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

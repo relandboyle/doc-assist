@@ -8,18 +8,34 @@ export async function getGoogleApiClient() {
     throw new Error("No access token available")
   }
 
+  console.log("Server-side Google API client:")
+  console.log("- Session found:", !!session)
+  console.log("- Access token length:", session.accessToken.length)
+  console.log("- Refresh token:", !!session.refreshToken)
+
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.NEXTAUTH_URL + "/api/auth/callback/google"
   )
 
   oauth2Client.setCredentials({
     access_token: session.accessToken,
+    refresh_token: session.refreshToken,
   })
 
-  // Set the API key for additional quota and public data access
-  if (process.env.GOOGLE_API_KEY) {
-    oauth2Client.apiKey = process.env.GOOGLE_API_KEY
+  // Try to refresh the token if we have a refresh token
+  if (session.refreshToken) {
+    try {
+      console.log("Attempting to refresh access token...")
+      const { credentials } = await oauth2Client.refreshAccessToken()
+      console.log("Token refreshed successfully")
+      oauth2Client.setCredentials(credentials)
+    } catch (error) {
+      console.log("Token refresh failed, using existing token:", error instanceof Error ? error.message : String(error))
+    }
+  } else {
+    console.log("No refresh token available, using existing access token")
   }
 
   return oauth2Client

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,6 +12,7 @@ import { GenerateDocumentDialog } from "@/components/generate-document-dialog"
 import { useTemplateStore } from "@/lib/template-store"
 
 export function QuickGenerate() {
+  const { data: session, status } = useSession()
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
   const [quickFormData, setQuickFormData] = useState({
@@ -29,6 +31,27 @@ export function QuickGenerate() {
       setSelectedTemplate(availableTemplates[0]) // Use first available template
       setShowGenerateDialog(true)
     }
+  }
+
+  // Don't render anything if session is loading or not authenticated
+  if (status === "loading") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Please sign in to generate documents.</div>
+        </div>
+      </div>
+    )
   }
 
   const resumeTemplates = templates.filter((t) => t.type === "resume")

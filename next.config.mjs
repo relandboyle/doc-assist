@@ -11,6 +11,10 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  env: {
+    NEXT_PUBLIC_GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+  },
   webpack: (config, { dev, isServer }) => {
     // Configure webpack cache to prevent "invalid stored block lengths" error
     if (dev) {

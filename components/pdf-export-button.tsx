@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, ExternalLink } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -20,10 +21,20 @@ export function PdfExportButton({
   size = "default",
   showText = true,
 }: PdfExportButtonProps) {
+  const { data: session, status } = useSession()
   const [isExporting, setIsExporting] = useState(false)
   const { toast } = useToast()
 
   const handleExportPdf = async () => {
+    if (status !== "authenticated") {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to export PDFs.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsExporting(true)
     try {
       const response = await fetch("/api/export/pdf", {
@@ -67,6 +78,15 @@ export function PdfExportButton({
   }
 
   const handleOpenPdfInBrowser = async () => {
+    if (status !== "authenticated") {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to view PDFs.",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       const response = await fetch(`/api/export/pdf?documentId=${documentId}`)
       if (!response.ok) throw new Error("Failed to get PDF export URL")

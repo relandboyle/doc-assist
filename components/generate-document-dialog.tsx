@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Badge } from "@/components/ui/badge"
 import { Loader2, FileText, Sparkles } from "lucide-react"
 import { PdfExportButton } from "@/components/pdf-export-button"
+import { useToast } from "@/hooks/use-toast"
 
 interface TemplateVariable {
   placeholder: string
@@ -36,6 +38,8 @@ interface GenerateDocumentDialogProps {
 }
 
 export function GenerateDocumentDialog({ open, onOpenChange, template }: GenerateDocumentDialogProps) {
+  const { data: session, status } = useSession()
+  const { toast } = useToast()
   const [variables, setVariables] = useState<TemplateVariable[]>([])
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [documentName, setDocumentName] = useState("")
@@ -43,16 +47,28 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedDocumentId, setGeneratedDocumentId] = useState<string | null>(null)
 
+  // Close dialog if user is not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated" && open) {
+      onOpenChange(false)
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to generate documents.",
+        variant: "destructive",
+      })
+    }
+  }, [status, open, onOpenChange, toast])
+
   // Load template variables when dialog opens
   useEffect(() => {
-    if (open && template) {
+    if (open && template && status === "authenticated") {
       loadTemplateVariables()
       setDocumentName(`${template.name} - ${new Date().toLocaleDateString()}`)
     }
-  }, [open, template])
+  }, [open, template, status])
 
   const loadTemplateVariables = async () => {
-    if (!template) return
+    if (!template || status !== "authenticated") return
 
     setIsLoading(true)
     try {
@@ -70,6 +86,11 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
       setFormData(initialFormData)
     } catch (error) {
       console.error("Error loading template variables:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load template variables.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -83,7 +104,14 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
   }
 
   const handleGenerate = async () => {
-    if (!template) return
+    if (!template || status !== "authenticated") {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to generate documents.",
+        variant: "destructive",
+      })
+      return
+    }
 
     setIsGenerating(true)
     try {

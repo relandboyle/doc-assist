@@ -18,22 +18,18 @@ export default async function DashboardPage() {
       <DashboardHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">
-        <Tabs defaultValue="generate" className="space-y-6">
+        <Tabs defaultValue="templates" className="space-y-6">
           <TabsList className="grid w-200 self-center grid-cols-3 bg-muted">
-            <TabsTrigger value="generate" className="data-[state=active]:bg-background">
-              Generate Documents
-            </TabsTrigger>
             <TabsTrigger value="templates" className="data-[state=active]:bg-background">
               Manage Templates
             </TabsTrigger>
             <TabsTrigger value="history" className="data-[state=active]:bg-background">
               Document History
             </TabsTrigger>
+            <TabsTrigger value="generate" className="data-[state=active]:bg-background">
+              Generate Documents
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="generate">
-            <QuickGenerate />
-          </TabsContent>
 
           <TabsContent value="templates">
             <TemplateDashboard />
@@ -41,6 +37,10 @@ export default async function DashboardPage() {
 
           <TabsContent value="history">
             <DocumentHistory />
+          </TabsContent>
+
+          <TabsContent value="generate">
+            <QuickGenerate />
           </TabsContent>
         </Tabs>
       </main>

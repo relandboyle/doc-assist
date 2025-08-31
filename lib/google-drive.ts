@@ -102,22 +102,32 @@ export class GoogleDriveService {
     }
   }
 
-  // Search for folders by name
-  static async findFolderByName(name: string): Promise<DriveFolder[]> {
+  // Search for folders by name (globally or within a specific parent)
+  static async findFolderByName(name: string, parentId?: string): Promise<DriveFolder | null> {
     const drive = await this.getDrive()
 
+    let query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+    if (parentId) {
+      query += ` and '${parentId}' in parents`
+    }
+
     const response = await drive.files.list({
-      q: `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      q: query,
       fields: "files(id, name, parents)",
+      pageSize: 1, // We only need the first match
     })
 
-    return (
-      response.data.files?.map((file) => ({
+    const files = response.data.files || []
+    if (files.length > 0) {
+      const file = files[0]
+      return {
         id: file.id!,
         name: file.name!,
         parents: file.parents || undefined,
-      })) || []
-    )
+      }
+    }
+
+    return null
   }
 
   // List all folders in user's Google Drive

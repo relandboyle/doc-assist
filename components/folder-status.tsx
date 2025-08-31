@@ -72,8 +72,8 @@ export function FolderStatus({ onManageFolders }: FolderStatusProps) {
 
   // Compact view when folders are configured
   return (
-    <Card className="border-border bg-card">
-      <CardContent className="py-3">
+    <Card className="border-border bg-card py-1">
+      <CardContent className="py-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
             <CheckCircle className="h-4 w-4 text-green-500" />

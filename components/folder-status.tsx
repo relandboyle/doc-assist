@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { FolderOpen, ExternalLink, CheckCircle, AlertCircle } from "lucide-react"
 import { useTemplateStore } from "@/lib/template-store"
+import { Loader2 } from "lucide-react"
 
 interface FolderStatusProps {
   onManageFolders: () => void
@@ -13,7 +14,7 @@ interface FolderStatusProps {
 
 export function FolderStatus({ onManageFolders }: FolderStatusProps) {
   const { data: session, status } = useSession()
-  const { folders } = useTemplateStore()
+  const { folders, isLoading } = useTemplateStore()
 
   // Don't render anything if session is loading or not authenticated
   if (status === "loading") {
@@ -60,9 +61,18 @@ export function FolderStatus({ onManageFolders }: FolderStatusProps) {
             <p className="text-sm text-muted-foreground">
               Set up your Google Drive folder structure to start creating templates.
             </p>
-            <Button onClick={onManageFolders} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              <FolderOpen className="h-3 w-3 mr-1" />
-              Setup
+            <Button onClick={onManageFolders} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground" disabled={isLoading}>
+              {isLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  Setting up...
+                </span>
+              ) : (
+                <>
+                  <FolderOpen className="h-3 w-3 mr-1" />
+                  Setup
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -104,9 +114,18 @@ export function FolderStatus({ onManageFolders }: FolderStatusProps) {
               {folders.mainFolderName}
             </Button>
           </div>
-          <Button onClick={onManageFolders} variant="ghost" size="sm">
-            <FolderOpen className="h-3 w-3 mr-1" />
-            Manage
+          <Button onClick={onManageFolders} variant="ghost" size="sm" disabled={isLoading}>
+            {isLoading ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Working...
+              </span>
+            ) : (
+              <>
+                <FolderOpen className="h-3 w-3 mr-1" />
+                Manage
+              </>
+            )}
           </Button>
         </div>
       </CardContent>

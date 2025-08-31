@@ -6,8 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, Plus, FolderOpen, Settings, Edit, Copy, Eye, Sparkles } from "lucide-react"
-import { CreateTemplateDialog } from "@/components/create-template-dialog"
+import { FileText, FolderOpen, Settings, Edit, Copy, Eye, Sparkles } from "lucide-react"
 import { FolderSetupDialog } from "@/components/folder-setup-dialog"
 import { GenerateDocumentDialog } from "@/components/generate-document-dialog"
 import { PdfExportButton } from "@/components/pdf-export-button"
@@ -16,13 +15,15 @@ import { useTemplateStore } from "@/lib/template-store"
 
 export function TemplateDashboard() {
   const { data: session, status } = useSession()
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showFolderDialog, setShowFolderDialog] = useState(false)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
-  const [selectedTemplateType, setSelectedTemplateType] = useState<"resume" | "coverLetter">("resume")
+  const [resumeCount, setResumeCount] = useState(0)
+  const [coverCount, setCoverCount] = useState(0)
+  const [resumeTemplates, setResumeTemplates] = useState<any[]>([])
+  const [coverLetterTemplates, setCoverLetterTemplates] = useState<any[]>([])
 
-  const { templates, folders, isLoading, fetchTemplates, fetchFolders, initializeFromStorage } = useTemplateStore()
+  const { folders, isLoading, fetchFolders, initializeFromStorage } = useTemplateStore()
 
   useEffect(() => {
     // Only initialize from localStorage if user is authenticated
@@ -33,18 +34,73 @@ export function TemplateDashboard() {
   }, [status])
 
   useEffect(() => {
-    // Only fetch templates if user is authenticated and has folder IDs
-    if (status === "authenticated" && folders.resumeFolderId) {
-      fetchTemplates(folders.resumeFolderId, "resume")
+    // Fetch resume templates into local state
+    const run = async () => {
+      if (status !== "authenticated" || !folders.resumeFolderId) return
+      try {
+        const resp = await fetch(`/api/templates?folderId=${folders.resumeFolderId}&type=resume`)
+        if (!resp.ok) return setResumeTemplates([])
+        const data = await resp.json()
+        setResumeTemplates(Array.isArray(data.templates) ? data.templates : [])
+      } catch {
+        setResumeTemplates([])
+      }
     }
-  }, [folders.resumeFolderId, fetchTemplates, status])
+    run()
+  }, [folders.resumeFolderId, status])
 
   useEffect(() => {
-    // Only fetch templates if user is authenticated and has folder IDs
-    if (status === "authenticated" && folders.coverLetterFolderId) {
-      fetchTemplates(folders.coverLetterFolderId, "coverLetter")
+    // Fetch cover letter templates into local state
+    const run = async () => {
+      if (status !== "authenticated" || !folders.coverLetterFolderId) return
+      try {
+        const resp = await fetch(`/api/templates?folderId=${folders.coverLetterFolderId}&type=coverLetter`)
+        if (!resp.ok) return setCoverLetterTemplates([])
+        const data = await resp.json()
+        setCoverLetterTemplates(Array.isArray(data.templates) ? data.templates : [])
+      } catch {
+        setCoverLetterTemplates([])
+      }
     }
-  }, [folders.coverLetterFolderId, fetchTemplates, status])
+    run()
+  }, [folders.coverLetterFolderId, status])
+
+  // Fetch accurate counts for each folder independently of the shared templates list
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const [resumeResp, coverResp] = await Promise.all([
+          folders.resumeFolderId
+            ? fetch(`/api/templates?folderId=${folders.resumeFolderId}&type=resume`)
+            : Promise.resolve(null as unknown as Response),
+          folders.coverLetterFolderId
+            ? fetch(`/api/templates?folderId=${folders.coverLetterFolderId}&type=coverLetter`)
+            : Promise.resolve(null as unknown as Response),
+        ])
+
+        if (resumeResp && resumeResp.ok) {
+          const data = await resumeResp.json()
+          setResumeCount(Array.isArray(data.templates) ? data.templates.length : 0)
+        } else {
+          setResumeCount(0)
+        }
+
+        if (coverResp && coverResp.ok) {
+          const data = await coverResp.json()
+          setCoverCount(Array.isArray(data.templates) ? data.templates.length : 0)
+        } else {
+          setCoverCount(0)
+        }
+      } catch (err) {
+        setResumeCount(0)
+        setCoverCount(0)
+      }
+    }
+
+    if (status === "authenticated" && (folders.resumeFolderId || folders.coverLetterFolderId)) {
+      fetchCounts()
+    }
+  }, [status, folders.resumeFolderId, folders.coverLetterFolderId])
 
   // Don't render anything if session is loading or not authenticated
   if (status === "loading") {
@@ -67,18 +123,12 @@ export function TemplateDashboard() {
     )
   }
 
-  const handleCreateTemplate = (type: "resume" | "coverLetter") => {
-    setSelectedTemplateType(type)
-    setShowCreateDialog(true)
-  }
-
   const handleGenerateDocument = (template: any) => {
     setSelectedTemplate(template)
     setShowGenerateDialog(true)
   }
 
-  const resumeTemplates = templates.filter((t) => t.type === "resume")
-  const coverLetterTemplates = templates.filter((t) => t.type === "coverLetter")
+  // Local state arrays hold templates for each tab (state variables above)
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -98,13 +148,6 @@ export function TemplateDashboard() {
             <FolderOpen className="h-4 w-4 mr-2" />
             {folders.mainFolderId ? "Manage Folders" : "Setup Folders"}
           </Button>
-          <Button
-            onClick={() => handleCreateTemplate("resume")}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Template
-          </Button>
         </div>
       </div>
 
@@ -121,7 +164,7 @@ export function TemplateDashboard() {
             <FileText className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">{resumeTemplates.length}</div>
+            <div className="text-2xl font-bold text-card-foreground">{resumeCount}</div>
             <p className="text-xs text-muted-foreground">Ready for customization</p>
           </CardContent>
         </Card>
@@ -132,7 +175,7 @@ export function TemplateDashboard() {
             <FileText className="h-4 w-4 text-secondary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">{coverLetterTemplates.length}</div>
+            <div className="text-2xl font-bold text-card-foreground">{coverCount}</div>
             <p className="text-xs text-muted-foreground">Professional templates</p>
           </CardContent>
         </Card>
@@ -143,9 +186,7 @@ export function TemplateDashboard() {
             <Settings className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-card-foreground">
-              {resumeTemplates.length + coverLetterTemplates.length}
-            </div>
+            <div className="text-2xl font-bold text-card-foreground">{resumeCount + coverCount}</div>
             <p className="text-xs text-muted-foreground">Across all categories</p>
           </CardContent>
         </Card>
@@ -165,15 +206,6 @@ export function TemplateDashboard() {
         <TabsContent value="resume" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-foreground">Resume Templates</h2>
-            <Button
-              onClick={() => handleCreateTemplate("resume")}
-              variant="outline"
-              size="sm"
-              className="border-border hover:bg-accent"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Resume Template
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -186,22 +218,12 @@ export function TemplateDashboard() {
               />
             ))}
 
-            {/* Empty state for new users */}
             {resumeTemplates.length === 0 && (
               <Card className="border-dashed border-2 border-border bg-card/50">
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <FileText className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium text-card-foreground mb-2">No resume templates yet</h3>
-                  <p className="text-muted-foreground text-center mb-4">
-                    Create your first resume template to get started
-                  </p>
-                  <Button
-                    onClick={() => handleCreateTemplate("resume")}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Template
-                  </Button>
+                  <p className="text-muted-foreground text-center mb-4">Add resume templates to your Google Drive folder to begin.</p>
                 </CardContent>
               </Card>
             )}
@@ -211,15 +233,6 @@ export function TemplateDashboard() {
         <TabsContent value="coverLetter" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-foreground">Cover Letter Templates</h2>
-            <Button
-              onClick={() => handleCreateTemplate("coverLetter")}
-              variant="outline"
-              size="sm"
-              className="border-border hover:bg-accent"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Cover Letter Template
-            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -232,22 +245,12 @@ export function TemplateDashboard() {
               />
             ))}
 
-            {/* Empty state for new users */}
             {coverLetterTemplates.length === 0 && (
               <Card className="border-dashed border-2 border-border bg-card/50">
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <FileText className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium text-card-foreground mb-2">No cover letter templates yet</h3>
-                  <p className="text-muted-foreground text-center mb-4">
-                    Create your first cover letter template to get started
-                  </p>
-                  <Button
-                    onClick={() => handleCreateTemplate("coverLetter")}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Template
-                  </Button>
+                  <p className="text-muted-foreground text-center mb-4">Add cover letter templates to your Google Drive folder to begin.</p>
                 </CardContent>
               </Card>
             )}
@@ -256,12 +259,6 @@ export function TemplateDashboard() {
       </Tabs>
 
       {/* Dialogs */}
-      <CreateTemplateDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        templateType={selectedTemplateType}
-      />
-
       <FolderSetupDialog
         open={showFolderDialog}
         onOpenChange={setShowFolderDialog}

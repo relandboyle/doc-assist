@@ -12,6 +12,10 @@ interface TemplateStore {
     mainFolderName?: string
     resumeFolderName?: string
     coverLetterFolderName?: string
+    generatedResumeFolderId?: string
+    generatedResumeFolderName?: string
+    generatedCoverLetterFolderId?: string
+    generatedCoverLetterFolderName?: string
     parentFolderId?: string
     parentFolderName?: string
   }
@@ -29,6 +33,10 @@ interface TemplateStore {
     mainFolderName?: string;
     resumeFolderName?: string;
     coverLetterFolderName?: string;
+    generatedResumeFolderId?: string;
+    generatedResumeFolderName?: string;
+    generatedCoverLetterFolderId?: string;
+    generatedCoverLetterFolderName?: string;
     parentFolderId?: string;
     parentFolderName?: string;
   }) => void
@@ -134,6 +142,10 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
         resumeFolderName: data.folders.resumeFolder.name,
         coverLetterFolderId: data.folders.coverLetterFolder.id,
         coverLetterFolderName: data.folders.coverLetterFolder.name,
+        generatedResumeFolderId: data.folders.generatedResumeFolder?.id,
+        generatedResumeFolderName: data.folders.generatedResumeFolder?.name,
+        generatedCoverLetterFolderId: data.folders.generatedCoverLetterFolder?.id,
+        generatedCoverLetterFolderName: data.folders.generatedCoverLetterFolder?.name,
         parentFolderId: data.folders.parentFolder?.id,
         parentFolderName: data.folders.parentFolder?.name,
       }
@@ -159,6 +171,10 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
           resumeFolderName: data.folders.resumeFolder.name,
           coverLetterFolderId: data.folders.coverLetterFolder.id,
           coverLetterFolderName: data.folders.coverLetterFolder.name,
+          generatedResumeFolderId: data.folders.generatedResumeFolder?.id,
+          generatedResumeFolderName: data.folders.generatedResumeFolder?.name,
+          generatedCoverLetterFolderId: data.folders.generatedCoverLetterFolder?.id,
+          generatedCoverLetterFolderName: data.folders.generatedCoverLetterFolder?.name,
           parentFolderId: data.folders.parentFolder?.id,
           parentFolderName: data.folders.parentFolder?.name,
         }

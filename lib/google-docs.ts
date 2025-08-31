@@ -133,7 +133,7 @@ export class GoogleDocsService {
     })
   }
 
-  // Generate document from template with variable substitution
+  // Generate document from template with variable substitution (preserves formatting)
   static async generateFromTemplate(
     templateId: string,
     variables: Record<string, string>,
@@ -141,23 +141,34 @@ export class GoogleDocsService {
     targetFolderId?: string,
   ): Promise<string> {
     try {
-      // Copy the template
+      // Copy the template to the target folder (if provided)
       const copiedFile = await GoogleDriveService.copyFile(templateId, newName, targetFolderId)
 
-      // Get the document content
-      const doc = await this.getDocument(copiedFile.id)
+      // Build replaceAllText requests for both {{KEY}} and [KEY] placeholder styles
+      const requests: any[] = []
+      for (const [rawKey, value] of Object.entries(variables)) {
+        const key = String(rawKey)
+        const replacements = [`{{${key}}}`, `[${key}]`]
+        for (const findText of replacements) {
+          requests.push({
+            replaceAllText: {
+              containsText: {
+                text: findText,
+                matchCase: false,
+              },
+              replaceText: value ?? "",
+            },
+          })
+        }
+      }
 
-      // Extract text content and replace variables
-      let content = this.extractTextFromDocument(doc)
-
-      // Replace placeholders with actual values
-      Object.entries(variables).forEach(([key, value]) => {
-        const placeholder = `{{${key}}}`
-        content = content.replace(new RegExp(placeholder, "g"), value)
-      })
-
-      // Update the document with replaced content
-      await this.updateDocumentContent(copiedFile.id, content)
+      if (requests.length > 0) {
+        const docs = await this.getDocs()
+        await docs.documents.batchUpdate({
+          documentId: copiedFile.id,
+          requestBody: { requests },
+        })
+      }
 
       return copiedFile.id
     } catch (error) {
@@ -166,23 +177,66 @@ export class GoogleDocsService {
     }
   }
 
-  // Extract text content from document
+  // Extract text content from document (body, tables, headers, footers)
   private static extractTextFromDocument(doc: any): string {
-    let text = ""
+    let collectedText: string[] = []
 
-    if (doc.body?.content) {
-      for (const element of doc.body.content) {
+    const pushText = (t?: string) => {
+      if (t) collectedText.push(t)
+    }
+
+    const traverseElements = (elements: any[]) => {
+      if (!Array.isArray(elements)) return
+      for (const element of elements) {
+        // Paragraphs
         if (element.paragraph?.elements) {
-          for (const paragraphElement of element.paragraph.elements) {
-            if (paragraphElement.textRun?.content) {
-              text += paragraphElement.textRun.content
+          for (const pe of element.paragraph.elements) {
+            if (pe.textRun?.content) {
+              pushText(pe.textRun.content)
             }
           }
+        }
+
+        // Tables
+        if (element.table?.tableRows) {
+          for (const row of element.table.tableRows) {
+            for (const cell of row.tableCells || []) {
+              if (Array.isArray(cell.content)) {
+                traverseElements(cell.content)
+              }
+            }
+          }
+        }
+
+        // Table of contents
+        if (element.tableOfContents?.content) {
+          traverseElements(element.tableOfContents.content)
         }
       }
     }
 
-    return text
+    // Body
+    if (doc.body?.content) {
+      traverseElements(doc.body.content)
+    }
+
+    // Headers
+    if (doc.headers) {
+      for (const key of Object.keys(doc.headers)) {
+        const header = doc.headers[key]
+        if (header?.content) traverseElements(header.content)
+      }
+    }
+
+    // Footers
+    if (doc.footers) {
+      for (const key of Object.keys(doc.footers)) {
+        const footer = doc.footers[key]
+        if (footer?.content) traverseElements(footer.content)
+      }
+    }
+
+    return collectedText.join("")
   }
 
   // Get default template content based on type
@@ -239,13 +293,17 @@ Sincerely,
     const doc = await this.getDocument(documentId)
     const content = this.extractTextFromDocument(doc)
 
-    // Find all placeholders in the format {{VARIABLE_NAME}}
-    const placeholderRegex = /\{\{([^}]+)\}\}/g
+    // Find placeholders in either {{KEY}} or [KEY] formats
+    const curlyRegex = /\{\{([^}]+)\}\}/g
+    const bracketRegex = /\[([^\]]+)\]/g
     const placeholders = new Set<string>()
-    let match
 
-    while ((match = placeholderRegex.exec(content)) !== null) {
-      placeholders.add(match[1])
+    let match
+    while ((match = curlyRegex.exec(content)) !== null) {
+      placeholders.add(match[1].trim())
+    }
+    while ((match = bracketRegex.exec(content)) !== null) {
+      placeholders.add(match[1].trim())
     }
 
     // Convert to template variables with descriptions
@@ -254,6 +312,12 @@ Sincerely,
       description: this.getVariableDescription(placeholder),
       required: true,
     }))
+  }
+
+  // Debug/helper: return the plain text extracted from the Google Doc
+  static async getDocumentText(documentId: string): Promise<string> {
+    const doc = await this.getDocument(documentId)
+    return this.extractTextFromDocument(doc)
   }
 
   // Get human-readable description for variables

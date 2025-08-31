@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, FileText, Sparkles } from "lucide-react"
 import { PdfExportButton } from "@/components/pdf-export-button"
 import { useToast } from "@/hooks/use-toast"
+import { useTemplateStore } from "@/lib/template-store"
 
 interface TemplateVariable {
   placeholder: string
@@ -40,6 +41,7 @@ interface GenerateDocumentDialogProps {
 export function GenerateDocumentDialog({ open, onOpenChange, template }: GenerateDocumentDialogProps) {
   const { data: session, status } = useSession()
   const { toast } = useToast()
+  const { folders } = useTemplateStore()
   const [variables, setVariables] = useState<TemplateVariable[]>([])
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [documentName, setDocumentName] = useState("")
@@ -122,6 +124,7 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
           templateId: template.id,
           variables: formData,
           documentName,
+          targetFolderId: template.type === "coverLetter" ? folders.generatedCoverLetterFolderId : folders.generatedResumeFolderId,
         }),
       })
 
@@ -252,25 +255,45 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
                         {variable.description}
                         {variable.required && <span className="text-destructive">*</span>}
                       </Label>
-                      {variable.placeholder.includes("PARAGRAPH") ||
-                      variable.placeholder.includes("SUMMARY") ||
-                      variable.placeholder.includes("DESCRIPTION") ? (
-                        <Textarea
-                          value={formData[variable.placeholder] || ""}
-                          onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
-                          placeholder={`Enter ${variable.description.toLowerCase()}`}
-                          className="bg-input border-border min-h-[80px]"
-                          required={variable.required}
-                        />
-                      ) : (
-                        <Input
-                          value={formData[variable.placeholder] || ""}
-                          onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
-                          placeholder={`Enter ${variable.description.toLowerCase()}`}
-                          className="bg-input border-border"
-                          required={variable.required}
-                        />
-                      )}
+                      {(() => {
+                        const lower = variable.placeholder.trim().toLowerCase()
+                        const isDateField = lower === "date" || lower === "today's date" || lower === "today’s date"
+                        if (isDateField) {
+                          return (
+                            <Input
+                              type="date"
+                              value={formData[variable.placeholder] || ""}
+                              onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                              className="bg-input border-border"
+                              required={variable.required}
+                            />
+                          )
+                        }
+                        if (
+                          variable.placeholder.includes("PARAGRAPH") ||
+                          variable.placeholder.includes("SUMMARY") ||
+                          variable.placeholder.includes("DESCRIPTION")
+                        ) {
+                          return (
+                            <Textarea
+                              value={formData[variable.placeholder] || ""}
+                              onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                              placeholder={`Enter ${variable.description.toLowerCase()}`}
+                              className="bg-input border-border min-h-[80px]"
+                              required={variable.required}
+                            />
+                          )
+                        }
+                        return (
+                          <Input
+                            value={formData[variable.placeholder] || ""}
+                            onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                            placeholder={`Enter ${variable.description.toLowerCase()}`}
+                            className="bg-input border-border"
+                            required={variable.required}
+                          />
+                        )
+                      })()}
                     </div>
                   ))}
                 </div>

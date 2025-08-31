@@ -11,12 +11,30 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const templateId = params.id
+    const { searchParams } = new URL(request.url)
+    const debug = searchParams.get("debug") === "1"
+
     const document = await GoogleDocsService.getDocument(templateId)
     const variables = await GoogleDocsService.getTemplateVariables(templateId)
+
+    if (debug) {
+      const text = await GoogleDocsService.getDocumentText(templateId)
+      return NextResponse.json({ document, variables, textPreview: text })
+    }
 
     return NextResponse.json({ document, variables })
   } catch (error) {
     console.error("Error fetching template:", error)
+    // If debug mode, include more details to help diagnose
+    try {
+      const { searchParams } = new URL(request.url)
+      const debug = searchParams.get("debug") === "1"
+      if (debug) {
+        const err: any = error
+        const details = err?.errors || err?.response?.data || err?.message || String(err)
+        return NextResponse.json({ error: "Failed to fetch template", details }, { status: 500 })
+      }
+    } catch {}
     return NextResponse.json({ error: "Failed to fetch template" }, { status: 500 })
   }
 }

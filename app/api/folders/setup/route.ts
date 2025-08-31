@@ -21,17 +21,27 @@ export async function POST(request: NextRequest) {
       if (!existingFolderId) {
         return NextResponse.json({ error: "Parent folder ID is required" }, { status: 400 })
       }
-      // Create the main folder in the selected parent folder
-      const mainFolder = await GoogleDriveService.createFolder(folderName, existingFolderId)
+      // If a folder with the same name already exists under the selected parent, reuse it
+      const existingMain = await GoogleDriveService.findFolderByName(folderName, existingFolderId)
+      const mainFolder = existingMain ?? await GoogleDriveService.createFolder(folderName, existingFolderId)
 
-      // Create subfolders inside the main folder
-      const resumeFolder = await GoogleDriveService.createFolder("Resume Templates", mainFolder.id)
-      const coverLetterFolder = await GoogleDriveService.createFolder("Cover Letter Templates", mainFolder.id)
+      // Create subfolders inside the main folder (only if missing)
+      const existingResume = await GoogleDriveService.findFolderByName("Resume Templates", mainFolder.id)
+      const existingCover = await GoogleDriveService.findFolderByName("Cover Letter Templates", mainFolder.id)
+      const existingGenResume = await GoogleDriveService.findFolderByName("Generated Resumes", mainFolder.id)
+      const existingGenCover = await GoogleDriveService.findFolderByName("Generated Cover Letters", mainFolder.id)
+
+      const resumeFolder = existingResume ?? await GoogleDriveService.createFolder("Resume Templates", mainFolder.id)
+      const coverLetterFolder = existingCover ?? await GoogleDriveService.createFolder("Cover Letter Templates", mainFolder.id)
+      const generatedResumeFolder = existingGenResume ?? await GoogleDriveService.createFolder("Generated Resumes", mainFolder.id)
+      const generatedCoverLetterFolder = existingGenCover ?? await GoogleDriveService.createFolder("Generated Cover Letters", mainFolder.id)
 
       folders = {
         mainFolder,
         resumeFolder,
         coverLetterFolder,
+        generatedResumeFolder,
+        generatedCoverLetterFolder,
         parentFolder: { id: existingFolderId, name: parentFolderName || "Selected Folder" },
       }
     } else if (method === "existing") {
@@ -39,15 +49,34 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Existing folder ID is required" }, { status: 400 })
       }
 
-      // Create subfolders in existing folder
-      const resumeFolder = await GoogleDriveService.createFolder("Resume Templates", existingFolderId)
-      const coverLetterFolder = await GoogleDriveService.createFolder("Cover Letter Templates", existingFolderId)
+      // Look up the selected existing folder to get its real name and parent
+      const mainFolder = await GoogleDriveService.getFolder(existingFolderId)
+
+      // Reuse existing subfolders if present; create only if missing
+      const existingResume = await GoogleDriveService.findFolderByName("Resume Templates", existingFolderId)
+      const existingCover = await GoogleDriveService.findFolderByName("Cover Letter Templates", existingFolderId)
+      const existingGenResume = await GoogleDriveService.findFolderByName("Generated Resumes", existingFolderId)
+      const existingGenCover = await GoogleDriveService.findFolderByName("Generated Cover Letters", existingFolderId)
+
+      const resumeFolder = existingResume ?? await GoogleDriveService.createFolder("Resume Templates", existingFolderId)
+      const coverLetterFolder = existingCover ?? await GoogleDriveService.createFolder("Cover Letter Templates", existingFolderId)
+      const generatedResumeFolder = existingGenResume ?? await GoogleDriveService.createFolder("Generated Resumes", existingFolderId)
+      const generatedCoverLetterFolder = existingGenCover ?? await GoogleDriveService.createFolder("Generated Cover Letters", existingFolderId)
+
+      // Try to resolve the parent folder of the existing main folder (if any)
+      let parentFolder: { id: string; name: string } | undefined = undefined
+      if (mainFolder.parents && mainFolder.parents.length > 0) {
+        const parent = await GoogleDriveService.getFolder(mainFolder.parents[0])
+        parentFolder = { id: parent.id, name: parent.name }
+      }
 
       folders = {
-        mainFolder: { id: existingFolderId, name: "Existing Folder" },
+        mainFolder,
         resumeFolder,
         coverLetterFolder,
-        parentFolder: { id: existingFolderId, name: parentFolderName || "Existing Folder" },
+        generatedResumeFolder,
+        generatedCoverLetterFolder,
+        parentFolder,
       }
     } else {
       return NextResponse.json({ error: "Invalid setup method" }, { status: 400 })

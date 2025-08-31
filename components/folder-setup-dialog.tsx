@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FolderOpen, Plus, ExternalLink, Folder } from "lucide-react"
+import { FolderOpen, Plus, ExternalLink, Folder, Loader2 } from "lucide-react"
 import { GooglePickerWrapper } from "@/components/google-picker-wrapper"
 import { useToast } from "@/hooks/use-toast"
 import { useTemplateStore } from "@/lib/template-store"
@@ -115,6 +115,7 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
   }
 
   const setupFolders = async (parentFolderId: string, parentFolderName?: string) => {
+    setIsLoading(true)
     try {
       const { setupFolders: storeSetupFolders } = useTemplateStore.getState()
 
@@ -289,7 +290,7 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
                     Using Existing Folder
                   </p>
                   <p className="text-blue-700 dark:text-blue-300 mt-1">
-                    A folder with the same name was found. We'll use the existing folder instead of creating a new one.
+                    A folder with the same name was found. Click "Accept" to use the existing folder instead of creating a new one.
                   </p>
                 </div>
               </div>
@@ -317,9 +318,14 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
               }
               className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer"
             >
-              {isLoading ? "Setting up folders..." :
+              {isLoading ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Setting up folders...
+                </span>
+              ) :
                setupMethod === "new" ? "Select Parent Folder" :
-               setupMethod === "existing" ? (selectedParentFolder ? "Setup Folders" : "Select Folder") :
+               setupMethod === "existing" ? (selectedParentFolder ? (switchedToExisting ? "Accept" : "Setup Folders") : "Select Folder") :
                "Setup Folders"
               }
             </Button>

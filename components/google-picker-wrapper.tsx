@@ -73,8 +73,8 @@ export function GooglePickerWrapper({ onFolderSelect, onCancel, isActive }: Goog
       const session = await response.json()
       console.log("Session response:", { hasAccessToken: !!session.accessToken, user: session.user?.email })
 
-      if (!session.accessToken) {
-        throw new Error("No access token available. Please sign in again.")
+      if (!session.authenticated || !session.accessToken) {
+        throw new Error("Authentication required. Please sign in again.")
       }
 
       accessTokenRef.current = session.accessToken

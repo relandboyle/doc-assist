@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { method, folderName, existingFolderId } = body
+    const { method, folderName, existingFolderId, parentFolderName } = body
 
     let folders
 
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
         mainFolder,
         resumeFolder,
         coverLetterFolder,
+        parentFolder: { id: existingFolderId, name: parentFolderName || "Selected Folder" },
       }
     } else if (method === "existing") {
       if (!existingFolderId) {
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
         mainFolder: { id: existingFolderId, name: "Existing Folder" },
         resumeFolder,
         coverLetterFolder,
+        parentFolder: { id: existingFolderId, name: parentFolderName || "Existing Folder" },
       }
     } else {
       return NextResponse.json({ error: "Invalid setup method" }, { status: 400 })

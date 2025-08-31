@@ -14,7 +14,7 @@ export async function GET() {
     })
 
     if (!session) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      return NextResponse.json({ authenticated: false }, { status: 200 })
     }
 
     // If we have a refresh token, try to refresh the access token
@@ -36,6 +36,7 @@ export async function GET() {
         console.log("Token refreshed successfully")
 
         return NextResponse.json({
+          authenticated: true,
           accessToken: credentials.access_token,
           user: session.user
         })
@@ -46,6 +47,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      authenticated: true,
       accessToken: session.accessToken,
       user: session.user
     })

@@ -27,9 +27,10 @@ export function TemplateDashboard() {
   useEffect(() => {
     // Only initialize from localStorage if user is authenticated
     if (status === "authenticated") {
+      console.log('Initializing from localStorage...')
       initializeFromStorage()
     }
-  }, [initializeFromStorage, status])
+  }, [status])
 
   useEffect(() => {
     // Only fetch templates if user is authenticated and has folder IDs
@@ -92,7 +93,7 @@ export function TemplateDashboard() {
           <Button
             variant={folders.mainFolderId ? "outline" : "default"}
             onClick={() => setShowFolderDialog(true)}
-            className={folders.mainFolderId ? "border-border hover:bg-accent" : "bg-amber-500 hover:bg-amber-600 text-white"}
+            className={folders.mainFolderId ? "bg-background border-border hover:bg-accent" : "bg-amber-500 hover:bg-amber-600 text-white"}
           >
             <FolderOpen className="h-4 w-4 mr-2" />
             {folders.mainFolderId ? "Manage Folders" : "Setup Folders"}

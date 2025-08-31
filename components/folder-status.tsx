@@ -70,13 +70,31 @@ export function FolderStatus({ onManageFolders }: FolderStatusProps) {
     )
   }
 
+  // Compact view when folders are configured
   return (
     <Card className="border-border bg-card">
       <CardContent className="py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-2 text-sm">
             <CheckCircle className="h-4 w-4 text-green-500" />
-            <span className="text-muted-foreground">Google Drive:</span>
+            <span className="text-muted-foreground">Folders:</span>
+
+            {/* Parent folder link (if exists) */}
+            {folders.parentFolderId && folders.parentFolderName && (
+              <>
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => window.open(getGoogleDriveUrl(folders.parentFolderId!), "_blank")}
+                  className="h-auto p-0 text-foreground hover:text-primary"
+                >
+                  {folders.parentFolderName}
+                </Button>
+                <span className="text-muted-foreground">/</span>
+              </>
+            )}
+
+            {/* Main folder link */}
             <Button
               variant="link"
               size="sm"
@@ -84,24 +102,6 @@ export function FolderStatus({ onManageFolders }: FolderStatusProps) {
               className="h-auto p-0 text-foreground hover:text-primary"
             >
               {folders.mainFolderName}
-            </Button>
-            <span className="text-muted-foreground">•</span>
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => window.open(getGoogleDriveUrl(folders.resumeFolderId!), "_blank")}
-              className="h-auto p-0 text-foreground hover:text-primary"
-            >
-              {folders.resumeFolderName || "Resume Templates"}
-            </Button>
-            <span className="text-muted-foreground">•</span>
-            <Button
-              variant="link"
-              size="sm"
-              onClick={() => window.open(getGoogleDriveUrl(folders.coverLetterFolderId!), "_blank")}
-              className="h-auto p-0 text-foreground hover:text-primary"
-            >
-              {folders.coverLetterFolderName || "Cover Letter Templates"}
             </Button>
           </div>
           <Button onClick={onManageFolders} variant="ghost" size="sm">

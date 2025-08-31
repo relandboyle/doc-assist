@@ -13,6 +13,9 @@ export const metadata: Metadata = {
   title: "Document Template Manager",
   description: "Create and manage professional document templates",
   generator: "v0.app",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 const bodyStyles = {

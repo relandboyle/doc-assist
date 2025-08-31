@@ -12,6 +12,8 @@ interface TemplateStore {
     mainFolderName?: string
     resumeFolderName?: string
     coverLetterFolderName?: string
+    parentFolderId?: string
+    parentFolderName?: string
   }
   isLoading: boolean
   error: string | null
@@ -27,6 +29,8 @@ interface TemplateStore {
     mainFolderName?: string;
     resumeFolderName?: string;
     coverLetterFolderName?: string;
+    parentFolderId?: string;
+    parentFolderName?: string;
   }) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
@@ -35,9 +39,10 @@ interface TemplateStore {
   fetchTemplates: (folderId: string, type: "resume" | "coverLetter") => Promise<void>
   createTemplate: (name: string, description: string, type: "resume" | "coverLetter", folderId: string) => Promise<void>
   deleteTemplate: (templateId: string) => Promise<void>
-  setupFolders: (method: "new" | "existing", folderName?: string, existingFolderId?: string) => Promise<void>
+  setupFolders: (method: "new" | "existing", folderName?: string, existingFolderId?: string, parentFolderName?: string) => Promise<void>
   fetchFolders: () => Promise<void>
   initializeFromStorage: () => void
+  clearStorage: () => void
 }
 
 export const useTemplateStore = create<TemplateStore>((set, get) => ({
@@ -56,6 +61,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
     set({ folders })
     if (typeof window !== 'undefined') {
       localStorage.setItem('doc-assist-folders', JSON.stringify(folders))
+      console.log('Saved folders to localStorage:', folders)
     }
   },
   setLoading: (isLoading) => set({ isLoading }),
@@ -109,13 +115,13 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
     }
   },
 
-  setupFolders: async (method, folderName, existingFolderId) => {
+  setupFolders: async (method, folderName, existingFolderId, parentFolderName) => {
     set({ isLoading: true, error: null })
     try {
       const response = await fetch("/api/folders/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method, folderName, existingFolderId }),
+        body: JSON.stringify({ method, folderName, existingFolderId, parentFolderName }),
       })
 
       if (!response.ok) throw new Error("Failed to setup folders")
@@ -128,6 +134,8 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
         resumeFolderName: data.folders.resumeFolder.name,
         coverLetterFolderId: data.folders.coverLetterFolder.id,
         coverLetterFolderName: data.folders.coverLetterFolder.name,
+        parentFolderId: data.folders.parentFolder?.id,
+        parentFolderName: data.folders.parentFolder?.name,
       }
       get().setFolders(folderData)
       set({ isLoading: false })
@@ -151,6 +159,8 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
           resumeFolderName: data.folders.resumeFolder.name,
           coverLetterFolderId: data.folders.coverLetterFolder.id,
           coverLetterFolderName: data.folders.coverLetterFolder.name,
+          parentFolderId: data.folders.parentFolder?.id,
+          parentFolderName: data.folders.parentFolder?.name,
         }
         get().setFolders(folderData)
       }
@@ -161,18 +171,27 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   },
 
   initializeFromStorage: () => {
-    // Only access localStorage if we're in the browser and not on the login page
-    if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    // Only access localStorage if we're in the browser
+    if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('doc-assist-folders')
         if (stored) {
           const folderData = JSON.parse(stored)
           set({ folders: folderData })
+          console.log('Loaded folders from localStorage:', folderData)
         }
       } catch (error) {
         console.error('Error parsing stored folders:', error)
         localStorage.removeItem('doc-assist-folders')
       }
+    }
+  },
+
+  clearStorage: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('doc-assist-folders')
+      set({ folders: {} })
+      console.log('Cleared folders from localStorage')
     }
   },
 }))

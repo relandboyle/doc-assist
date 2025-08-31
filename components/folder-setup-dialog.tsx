@@ -63,7 +63,7 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
       setPickerActive(true)
     } else {
       // Use existing folder ID directly
-      setupFolders(existingFolderId)
+      setupFolders(existingFolderId, "Existing Folder")
     }
   }
 
@@ -74,7 +74,7 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
     onOpenChange(false)
     setIsLoading(true) // Show loading state while setting up folders
     // Automatically setup folders after selection
-    setupFolders(folderId)
+    setupFolders(folderId, folderName)
   }
 
   const handlePickerCancel = () => {
@@ -82,45 +82,21 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
     setIsLoading(false)
   }
 
-  const setupFolders = async (parentFolderId: string) => {
+  const setupFolders = async (parentFolderId: string, parentFolderName?: string) => {
     try {
-      const response = await fetch("/api/folders/setup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          method: setupMethod,
-          folderName: setupMethod === "new" ? folderName : undefined,
-          existingFolderId: parentFolderId,
-        }),
+      const { setupFolders: storeSetupFolders } = useTemplateStore.getState()
+
+      await storeSetupFolders(setupMethod, folderName, parentFolderId, parentFolderName)
+
+      // Show success toast
+      toast({
+        title: "Folder Structure Created",
+        description: "Your templates will now be saved to Google Drive.",
       })
 
-      if (response.ok) {
-        const data = await response.json()
-        console.log("Folders setup successfully:", data)
-
-        // Show success toast
-        toast({
-          title: "Folder Structure Created",
-          description: "Your templates will now be saved to Google Drive.",
-        })
-
-        // Trigger a state update to reflect the new setup
-        if (onSetupComplete) {
-          onSetupComplete()
-        }
-
-        // Also initialize from storage to ensure the UI updates
-        const { initializeFromStorage } = useTemplateStore.getState()
-        initializeFromStorage()
-      } else {
-        console.error("Failed to setup folders")
-        toast({
-          title: "Setup Failed",
-          description: "Failed to create folder structure. Please try again.",
-          variant: "destructive",
-        })
+      // Trigger a state update to reflect the new setup
+      if (onSetupComplete) {
+        onSetupComplete()
       }
     } catch (error) {
       console.error("Error setting up folders:", error)

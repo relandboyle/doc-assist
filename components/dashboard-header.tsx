@@ -35,7 +35,7 @@ export function DashboardHeader() {
       <div className="flex h-14 items-center justify-between">
         <div className="flex items-center space-x-2">
           <FileText className="h-6 w-6 text-primary" />
-          <span className="font-semibold">DocTemplate Pro</span>
+          <span className="font-semibold">Doc Tailor</span>
         </div>
 
         <div className="flex items-center space-x-4">

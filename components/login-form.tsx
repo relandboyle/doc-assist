@@ -13,7 +13,7 @@ export function LoginForm() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <FileText className="h-6 w-6 text-primary" />
-            <CardTitle className="text-2xl">DocTemplate Pro</CardTitle>
+            <CardTitle className="text-2xl">Doc Tailor</CardTitle>
           </div>
           <ThemeToggle />
         </div>

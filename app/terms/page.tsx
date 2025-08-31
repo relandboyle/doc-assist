@@ -6,12 +6,12 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function TermsPage() {
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gradient-to-br from-background to-muted">
-      <header className="border-b w-full px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="flex flex-col items-center bg-gradient-to-br from-background to-muted">
+      <header className="sticky top-0 z-50 border-b w-full px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center space-x-2">
             <FileText className="h-6 w-6 text-primary" />
-            <span className="font-semibold">DocTemplate Pro</span>
+            <span className="font-semibold">Doc Tailor</span>
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
@@ -25,7 +25,7 @@ export default function TermsPage() {
         </div>
       </header>
 
-      <main className="container py-16">
+      <main className="flex-1 container py-16">
         <div className="mx-auto max-w-4xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl mb-4">
@@ -42,7 +42,7 @@ export default function TermsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                By accessing and using DocTemplate Pro ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+                By accessing and using Doc Tailor ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
               </p>
             </CardContent>
           </Card>
@@ -53,7 +53,7 @@ export default function TermsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                DocTemplate Pro is a document template management service that allows users to create, store, and generate customized resumes, cover letters, and other professional documents. The service integrates with Google Docs and Google Drive for document storage and editing capabilities.
+                Doc Tailor is a document template management service that allows users to create, store, and generate customized resumes, cover letters, and other professional documents. The service integrates with Google Docs and Google Drive for document storage and editing capabilities.
               </p>
             </CardContent>
           </Card>
@@ -126,7 +126,7 @@ export default function TermsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                To the maximum extent permitted by law, DocTemplate Pro shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
+                To the maximum extent permitted by law, Doc Tailor shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
               </p>
             </CardContent>
           </Card>
@@ -151,7 +151,7 @@ export default function TermsPage() {
                 If you have any questions about these Terms of Service, please contact us at:
               </p>
               <p className="text-muted-foreground">
-                Email: support@doctemplatepro.com<br />
+                Email: support@doc-tailor.com<br />
                 Address: [Your Business Address]
               </p>
             </CardContent>

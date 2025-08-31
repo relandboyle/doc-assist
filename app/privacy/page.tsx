@@ -6,12 +6,12 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function PrivacyPage() {
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gradient-to-br from-background to-muted">
-      <header className="border-b w-full px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="flex flex-col items-center bg-gradient-to-br from-background to-muted">
+      <header className="sticky top-0 z-50 border-b w-full px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center space-x-2">
             <FileText className="h-6 w-6 text-primary" />
-            <span className="font-semibold">DocTemplate Pro</span>
+            <span className="font-semibold">Doc Tailor</span>
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
         </div>
       </header>
 
-      <main className="container py-16">
+      <main className="flex-1 container py-16">
         <div className="mx-auto max-w-4xl">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-5xl mb-4">
@@ -231,7 +231,7 @@ export default function PrivacyPage() {
                 If you have any questions about this Privacy Policy or our privacy practices, please contact us:
               </p>
               <p className="text-muted-foreground">
-                Email: privacy@doctemplatepro.com<br />
+                Email: privacy@doc-tailor.com<br />
                 Address: [Your Business Address]<br />
                 Phone: [Your Phone Number]
               </p>

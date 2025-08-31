@@ -14,10 +14,10 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex flex-col flex-1 bg-gradient-to-br from-background to-muted">
       <DashboardHeader />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-8">
         <Tabs defaultValue="generate" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 bg-muted">
             <TabsTrigger value="generate" className="data-[state=active]:bg-background">

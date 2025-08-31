@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 bg-gradient-to-br from-background to-muted">
+    <div className="flex flex-col flex-1 bg-gradient-to-br from-muted to-background">
       <DashboardHeader />
 
       <main className="flex-1 container mx-auto px-4 py-8">

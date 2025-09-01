@@ -10,6 +10,7 @@ import { FileText, FolderOpen, Settings, Edit, Copy, Eye, Sparkles } from "lucid
 import { FolderSetupDialog } from "@/components/folder-setup-dialog"
 import { GenerateDocumentDialog } from "@/components/generate-document-dialog"
 import { PdfExportButton } from "@/components/pdf-export-button"
+import { TemplatePreviewDialog } from "@/components/template-preview-dialog"
 import { FolderStatus } from "@/components/folder-status"
 import { useTemplateStore } from "@/lib/template-store"
 
@@ -18,6 +19,7 @@ export function TemplateDashboard() {
   const [showFolderDialog, setShowFolderDialog] = useState(false)
   const [showGenerateDialog, setShowGenerateDialog] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null)
+  const [previewTemplate, setPreviewTemplate] = useState<any>(null)
   const [resumeCount, setResumeCount] = useState(0)
   const [coverCount, setCoverCount] = useState(0)
   const [resumeTemplates, setResumeTemplates] = useState<any[]>([])
@@ -224,13 +226,14 @@ export function TemplateDashboard() {
             <h2 className="text-xl font-semibold text-foreground">Resume Templates</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {resumeTemplates.map((template) => (
               <TemplateCard
                 key={template.id}
                 template={template}
                 type="resume"
                 onGenerate={() => handleGenerateDocument(template)}
+                onPreview={() => setPreviewTemplate(template)}
               />
             ))}
 
@@ -251,13 +254,14 @@ export function TemplateDashboard() {
             <h2 className="text-xl font-semibold text-foreground">Cover Letter Templates</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {coverLetterTemplates.map((template) => (
               <TemplateCard
                 key={template.id}
                 template={template}
                 type="coverLetter"
                 onGenerate={() => handleGenerateDocument(template)}
+                onPreview={() => setPreviewTemplate(template)}
               />
             ))}
 
@@ -286,6 +290,14 @@ export function TemplateDashboard() {
         onOpenChange={setShowGenerateDialog}
         template={selectedTemplate}
       />
+
+      <TemplatePreviewDialog
+        open={!!previewTemplate}
+        onOpenChange={(open) => !open && setPreviewTemplate(null)}
+        templateId={previewTemplate?.id}
+        templateName={previewTemplate?.name}
+        mimeType={previewTemplate?.mimeType}
+      />
     </div>
   )
 }
@@ -297,12 +309,15 @@ interface TemplateCardProps {
     description?: string
     modifiedTime?: string
     folderId: string
+    mimeType?: string
   }
   type: "resume" | "coverLetter"
   onGenerate: () => void
+  onPreview: () => void
 }
 
-function TemplateCard({ template, type, onGenerate }: TemplateCardProps) {
+function TemplateCard({ template, type, onGenerate, onPreview }: TemplateCardProps) {
+  const isDocx = template.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   return (
     <Card className="border-border bg-card hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
@@ -325,31 +340,61 @@ function TemplateCard({ template, type, onGenerate }: TemplateCardProps) {
         </div>
 
         <div className="space-y-2">
-          <Button onClick={onGenerate} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Sparkles className="h-4 w-4 mr-2" />
-            Generate Document
-          </Button>
-
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="flex-1 bg-transparent">
-              <Eye className="h-4 w-4 mr-2" />
-              Preview
+          {!isDocx ? (
+            <Button onClick={onGenerate} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Sparkles className="h-4 w-4 mr-2" />
+              Generate Document
             </Button>
-            <Button size="sm" variant="outline" className="flex-1 bg-transparent">
+          ) : (
+            <Button
+              onClick={onGenerate}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              title="This .docx will be converted to a Google Doc during generation"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Convert & Generate
+            </Button>
+          )}
+
+          <div className="flex items-center gap-2 w-full">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 min-w-0 bg-transparent"
+              onClick={onPreview}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              <span className="truncate">Preview</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 min-w-0 bg-transparent"
+              onClick={() => {
+                const googleDocs = "application/vnd.google-apps.document"
+                const url = template.mimeType === googleDocs
+                  ? `https://docs.google.com/document/d/${template.id}/edit`
+                  : `https://drive.google.com/file/d/${template.id}/view`
+                window.open(url, "_blank", "noopener,noreferrer")
+              }}
+            >
               <Edit className="h-4 w-4 mr-2" />
-              Edit
+              <span className="truncate">Edit</span>
             </Button>
             {/* <Button size="sm" variant="outline">
               <Copy className="h-4 w-4" />
             </Button> */}
-            <PdfExportButton
-              documentId={template.id}
-              documentName={template.name}
-              variant="outline"
-              size="sm"
-              showText={true}
-              showOpenInBrowser={false}
-            />
+            {!isDocx && (
+              <PdfExportButton
+                documentId={template.id}
+                documentName={template.name}
+                variant="outline"
+                size="sm"
+                showText={true}
+                showOpenInBrowser={false}
+                className="flex-1 min-w-0"
+              />
+            )}
           </div>
         </div>
       </CardContent>

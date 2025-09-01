@@ -21,9 +21,12 @@ export async function GET(request: NextRequest) {
     // Get all files in the folder
     const files = await GoogleDriveService.listFiles(folderId)
 
-    // Filter Google Docs files only
+    // Show Google Docs and Office .docx in lists (docx will show Convert action in UI)
+    const DOCS = "application/vnd.google-apps.document"
+    const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
     const templates = files
-      .filter((file) => file.mimeType === "application/vnd.google-apps.document")
+      .filter((file) => file.mimeType === DOCS || file.mimeType === DOCX)
       .map((file) => ({
         id: file.id,
         name: file.name,
@@ -31,6 +34,7 @@ export async function GET(request: NextRequest) {
         folderId,
         createdTime: file.createdTime,
         modifiedTime: file.modifiedTime,
+        mimeType: file.mimeType,
       }))
 
     return NextResponse.json({ templates })

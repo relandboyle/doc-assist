@@ -5,9 +5,10 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { FileText, Clock, ExternalLink } from "lucide-react"
+import { FileText, Clock, ExternalLink, Eye } from "lucide-react"
 import { PdfExportButton } from "@/components/pdf-export-button"
 import { useTemplateStore } from "@/lib/template-store"
+import { TemplatePreviewDialog } from "@/components/template-preview-dialog"
 
 export function DocumentHistory() {
   const { data: session, status } = useSession()
@@ -15,6 +16,7 @@ export function DocumentHistory() {
   const [resumeDocs, setResumeDocs] = useState<any[]>([])
   const [coverLetterDocs, setCoverLetterDocs] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [previewDoc, setPreviewDoc] = useState<any>(null)
 
   useEffect(() => {
     const fetchDocs = async () => {
@@ -115,6 +117,10 @@ export function DocumentHistory() {
                     <span>{doc.createdTime ? `Created ${new Date(doc.createdTime).toLocaleDateString()}` : "Created recently"}</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setPreviewDoc(doc)} className="bg-transparent">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => window.open(`https://docs.google.com/document/d/${doc.id}/edit`, "_blank")} className="bg-transparent">
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Open
@@ -169,6 +175,10 @@ export function DocumentHistory() {
                     <span>{doc.createdTime ? `Created ${new Date(doc.createdTime).toLocaleDateString()}` : "Created recently"}</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setPreviewDoc(doc)} className="bg-transparent">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => window.open(`https://docs.google.com/document/d/${doc.id}/edit`, "_blank")} className="bg-transparent">
                       <ExternalLink className="h-4 w-4 mr-2" />
                       Open
@@ -191,6 +201,13 @@ export function DocumentHistory() {
           )}
         </div>
       </div>
+      <TemplatePreviewDialog
+        open={!!previewDoc}
+        onOpenChange={(open) => !open && setPreviewDoc(null)}
+        templateId={previewDoc?.id}
+        templateName={previewDoc?.name}
+        mimeType={previewDoc?.mimeType}
+      />
     </div>
   )
 }

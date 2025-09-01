@@ -141,8 +141,15 @@ export class GoogleDocsService {
     targetFolderId?: string,
   ): Promise<string> {
     try {
-      // Copy the template to the target folder (if provided)
-      const copiedFile = await GoogleDriveService.copyFile(templateId, newName, targetFolderId)
+      // Detect if source is a Google Doc or an Office docx and copy/convert accordingly
+      const drive = await GoogleDriveService.getDrive()
+      const srcMeta = await drive.files.get({ fileId: templateId, fields: "id, name, mimeType" })
+      const isGoogleDoc = srcMeta.data.mimeType === "application/vnd.google-apps.document"
+
+      // If .docx, convert to Google Doc via copy with target mimeType; else regular copy
+      const copiedFile = isGoogleDoc
+        ? await GoogleDriveService.copyFile(templateId, newName, targetFolderId)
+        : await GoogleDriveService.convertDocxToGoogleDoc(templateId, newName, targetFolderId)
 
       // Build replaceAllText requests for both {{KEY}} and [KEY] placeholder styles
       const requests: any[] = []

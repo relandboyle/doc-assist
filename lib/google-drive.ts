@@ -173,6 +173,30 @@ export class GoogleDriveService {
     }
   }
 
+  // Convert an Office .docx file in Drive to a Google Doc by copying with target mimeType
+  static async convertDocxToGoogleDoc(fileId: string, newName?: string, parentId?: string): Promise<DriveFile> {
+    const drive = await this.getDrive()
+
+    const response = await drive.files.copy({
+      fileId,
+      requestBody: {
+        name: newName,
+        parents: parentId ? [parentId] : undefined,
+        mimeType: "application/vnd.google-apps.document",
+      },
+      fields: "id, name, mimeType, parents, createdTime, modifiedTime",
+    })
+
+    return {
+      id: response.data.id!,
+      name: response.data.name!,
+      mimeType: response.data.mimeType!,
+      parents: response.data.parents || undefined,
+      createdTime: response.data.createdTime || undefined,
+      modifiedTime: response.data.modifiedTime || undefined,
+    }
+  }
+
   // Delete a file
   static async deleteFile(fileId: string): Promise<void> {
     const drive = await this.getDrive()

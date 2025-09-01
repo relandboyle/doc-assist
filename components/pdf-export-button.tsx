@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { Download, Loader2, ExternalLink } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -13,6 +14,8 @@ interface PdfExportButtonProps {
   size?: "default" | "sm" | "lg"
   showText?: boolean
   showOpenInBrowser?: boolean
+  fullWidth?: boolean
+  className?: string
 }
 
 export function PdfExportButton({
@@ -22,6 +25,8 @@ export function PdfExportButton({
   size = "default",
   showText = true,
   showOpenInBrowser = false,
+  fullWidth = false,
+  className,
 }: PdfExportButtonProps) {
   const { data: session, status } = useSession()
   const [isExporting, setIsExporting] = useState(false)
@@ -106,10 +111,18 @@ export function PdfExportButton({
   }
 
   return (
-    <div className="flex items-center gap-1">
-      <Button onClick={handleExportPdf} disabled={isExporting} variant={variant} size={size} className="bg-transparent">
+    <div className={cn("flex items-center gap-1", fullWidth ? "w-full" : undefined, className)}>
+      <Button
+        onClick={handleExportPdf}
+        disabled={isExporting}
+        variant={variant}
+        size={size}
+        className={cn("bg-transparent", fullWidth ? "w-full justify-center" : undefined, className)}
+      >
         {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-        {showText && <span className="ml-2">{isExporting ? "Exporting..." : "Download PDF"}</span>}
+        {showText && (
+          <span className="ml-2">{isExporting ? "Exporting..." : "PDF"}</span>
+        )}
       </Button>
 
       {showOpenInBrowser && (

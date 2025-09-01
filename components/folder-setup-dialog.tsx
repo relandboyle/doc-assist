@@ -230,10 +230,12 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
               <div className="bg-muted/50 rounded-lg p-4">
                 <h4 className="font-medium text-foreground mb-2">Folder Structure Preview:</h4>
                 <div className="text-sm text-muted-foreground space-y-1 ml-4">
-                  <div>📁 {selectedParentFolder?.name || "Selected Folder"}</div>
+                  <div>📁 {selectedParentFolder?.name || "Selected Folder (TBD)"}</div>
                   <div className="ml-4">📁 {folderName}</div>
                   <div className="ml-8">📁 Resume Templates</div>
                   <div className="ml-8">📁 Cover Letter Templates</div>
+                  <div className="ml-8">📁 Generated Resumes</div>
+                  <div className="ml-8">📁 Generated Cover Letters</div>
                 </div>
               </div>
             </div>
@@ -261,7 +263,7 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
                     <span>{selectedParentFolder.name}</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">
-                    We'll create "Resume Templates" and "Cover Letter Templates" subfolders inside this folder.
+                    We'll create "Resume Templates", "Cover Letter Templates", "Generated Resumes", and "Generated Cover Letters" subfolders inside this folder.
                   </p>
                 </div>
               )}
@@ -269,7 +271,7 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
               {!selectedParentFolder && (
                 <div className="bg-muted/50 rounded-lg p-4">
                   <p className="text-sm text-muted-foreground">
-                    Select an existing folder from your Google Drive. We'll create "Resume Templates" and "Cover Letter Templates" subfolders inside it.
+                    Select an existing folder from your Google Drive. We'll create "Resume Templates", "Cover Letter Templates", "Generated Resumes", and "Generated Cover Letters" subfolders inside it.
                   </p>
                 </div>
               )}

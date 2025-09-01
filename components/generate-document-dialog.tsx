@@ -16,7 +16,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, FileText, Sparkles } from "lucide-react"
+import { Loader2, FileText, Sparkles, CheckCircle, Minus } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 import { PdfExportButton } from "@/components/pdf-export-button"
 import { useToast } from "@/hooks/use-toast"
 import { useTemplateStore } from "@/lib/template-store"
@@ -46,6 +47,7 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [documentName, setDocumentName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingSteps, setLoadingSteps] = useState<{ converting: boolean; variables: boolean; isDocx: boolean; variablesDone: boolean }>({ converting: false, variables: false, isDocx: false, variablesDone: false })
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedDocumentId, setGeneratedDocumentId] = useState<string | null>(null)
 
@@ -73,19 +75,39 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
     if (!template || status !== "authenticated") return
 
     setIsLoading(true)
+    const isDocxByName = !!template.name && template.name.toLowerCase().endsWith(".docx")
+    // Start state: show convert (if .docx) and variables row (spinner), none done yet
+    setLoadingSteps({ converting: isDocxByName, variables: true, isDocx: isDocxByName, variablesDone: false })
     try {
-      const response = await fetch(`/api/templates/${template.id}`)
-      if (!response.ok) throw new Error("Failed to load template")
+      let workingId = template.id
+      if (isDocxByName) {
+        // 1) Prepare/convert if needed
+        const prepResp = await fetch(`/api/templates/convert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileId: template.id }),
+        })
+        if (!prepResp.ok) throw new Error("Failed to prepare template")
+        const prep = await prepResp.json()
+        workingId = prep.workingId
+        // conversion done
+        setLoadingSteps((s) => ({ ...s, converting: false, isDocx: true }))
+      }
 
-      const data = await response.json()
-      setVariables(data.variables || [])
+      // 2) Fetch variables
+      const varsResp = await fetch(`/api/templates/variables?fileId=${workingId}`)
+      if (!varsResp.ok) throw new Error("Failed to load variables")
+      const varsData = await varsResp.json()
+      setVariables(varsData.variables || [])
 
       // Initialize form data with empty values
       const initialFormData: Record<string, string> = {}
-      data.variables?.forEach((variable: TemplateVariable) => {
+      ;(varsData.variables || []).forEach((variable: TemplateVariable) => {
         initialFormData[variable.placeholder] = ""
       })
       setFormData(initialFormData)
+      // Mark variables step done, but keep loading visible briefly
+      setLoadingSteps((s) => ({ ...s, variablesDone: true }))
     } catch (error) {
       console.error("Error loading template variables:", error)
       toast({
@@ -94,7 +116,8 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      // Small delay so the completed state is visible
+      setTimeout(() => setIsLoading(false), 1000)
     }
   }
 
@@ -233,80 +256,115 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
               />
             </div>
 
-            {/* Variables Form */}
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Loading template variables...</span>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-popover-foreground">Fill in Template Variables</h3>
-                  <Badge variant="outline" className="text-xs">
-                    {variables.filter((v) => v.required).length} required fields
-                  </Badge>
-                </div>
+            {/* Variables Form with animated transition */}
+            <AnimatePresence mode="wait">
+              {isLoading ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="py-6"
+                >
+                  <div className="text-sm text-muted-foreground mb-3">Preparing template…</div>
+                  <div className="space-y-3">
+                    {loadingSteps.isDocx && (
+                      <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
+                        {loadingSteps.converting ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        )}
+                        <span className="text-sm">Converting .docx to Google Docs format…</span>
+                      </motion.div>
+                    )}
+                    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
+                      {loadingSteps.variablesDone ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      )}
+                      <span className="text-sm">Loading template variables…</span>
+                    </motion.div>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-popover-foreground">Fill in Template Variables</h3>
+                    <Badge variant="outline" className="text-xs">
+                      {variables.filter((v) => v.required).length} required fields
+                    </Badge>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {variables.map((variable) => (
-                    <div key={variable.placeholder} className="space-y-2">
-                      <Label className="text-popover-foreground flex items-center gap-1">
-                        {variable.description}
-                        {variable.required && <span className="text-destructive">*</span>}
-                      </Label>
-                      {(() => {
-                        const lower = variable.placeholder.trim().toLowerCase()
-                        const isDateField = lower === "date" || lower === "today's date" || lower === "today’s date"
-                        if (isDateField) {
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {variables.map((variable) => (
+                      <div key={variable.placeholder} className="space-y-2">
+                        <Label className="text-popover-foreground flex items-center gap-1">
+                          {variable.description}
+                          {variable.required && <span className="text-destructive">*</span>}
+                        </Label>
+                        {(() => {
+                          const lower = variable.placeholder.trim().toLowerCase()
+                          const isDateField = lower === "date" || lower === "today's date" || lower === "today’s date"
+                          if (isDateField) {
+                            return (
+                              <Input
+                                type="date"
+                                value={formData[variable.placeholder] || ""}
+                                onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                                className="bg-input border-border"
+                                required={variable.required}
+                              />
+                            )
+                          }
+                          if (
+                            variable.placeholder.includes("PARAGRAPH") ||
+                            variable.placeholder.includes("SUMMARY") ||
+                            variable.placeholder.includes("DESCRIPTION")
+                          ) {
+                            return (
+                              <Textarea
+                                value={formData[variable.placeholder] || ""}
+                                onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                                placeholder={`Enter ${variable.description.toLowerCase()}`}
+                                className="bg-input border-border min-h-[80px]"
+                                required={variable.required}
+                              />
+                            )
+                          }
                           return (
                             <Input
-                              type="date"
                               value={formData[variable.placeholder] || ""}
                               onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                              placeholder={`Enter ${variable.description.toLowerCase()}`}
                               className="bg-input border-border"
                               required={variable.required}
                             />
                           )
-                        }
-                        if (
-                          variable.placeholder.includes("PARAGRAPH") ||
-                          variable.placeholder.includes("SUMMARY") ||
-                          variable.placeholder.includes("DESCRIPTION")
-                        ) {
-                          return (
-                            <Textarea
-                              value={formData[variable.placeholder] || ""}
-                              onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
-                              placeholder={`Enter ${variable.description.toLowerCase()}`}
-                              className="bg-input border-border min-h-[80px]"
-                              required={variable.required}
-                            />
-                          )
-                        }
-                        return (
-                          <Input
-                            value={formData[variable.placeholder] || ""}
-                            onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
-                            placeholder={`Enter ${variable.description.toLowerCase()}`}
-                            className="bg-input border-border"
-                            required={variable.required}
-                          />
-                        )
-                      })()}
-                    </div>
-                  ))}
-                </div>
-
-                {variables.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No variables found in this template.</p>
-                    <p className="text-sm">You can still generate the document as-is.</p>
+                        })()}
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
-            )}
+
+                  {variables.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No variables found in this template.</p>
+                      <p className="text-sm">You can still generate the document as-is.</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 

@@ -19,23 +19,47 @@ export async function getGoogleApiClient() {
     process.env.NEXTAUTH_URL + "/api/auth/callback/google"
   )
 
-  oauth2Client.setCredentials({
-    access_token: session.accessToken,
-    refresh_token: session.refreshToken,
-  })
-
-  // Try to refresh the token if we have a refresh token
+  // Prefer a per-request refresh using the refresh_token to avoid stale tokens
   if (session.refreshToken) {
     try {
-      console.log("Attempting to refresh access token...")
-      const { credentials } = await oauth2Client.refreshAccessToken()
-      console.log("Token refreshed successfully")
-      oauth2Client.setCredentials(credentials)
-    } catch (error) {
-      console.log("Token refresh failed, using existing token:", error instanceof Error ? error.message : String(error))
+      console.log("Refreshing access token via OAuth endpoint...")
+      const params = new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID as string,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET as string,
+        grant_type: "refresh_token",
+        refresh_token: session.refreshToken as string,
+      })
+      const res = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      })
+      if (res.ok) {
+        const refreshed = await res.json()
+        oauth2Client.setCredentials({
+          access_token: refreshed.access_token,
+          refresh_token: session.refreshToken,
+        })
+        console.log("Access token refreshed for this request")
+      } else {
+        console.warn("Refresh endpoint returned status", res.status, "- falling back to existing token")
+        oauth2Client.setCredentials({
+          access_token: session.accessToken,
+          refresh_token: session.refreshToken,
+        })
+      }
+    } catch (err) {
+      console.warn("Refresh via OAuth endpoint failed - using existing token")
+      oauth2Client.setCredentials({
+        access_token: session.accessToken,
+        refresh_token: session.refreshToken,
+      })
     }
   } else {
-    console.log("No refresh token available, using existing access token")
+    // No refresh token – proceed with the current access token
+    oauth2Client.setCredentials({
+      access_token: session.accessToken,
+    })
   }
 
   return oauth2Client

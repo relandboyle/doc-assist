@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useTemplateStore } from "@/lib/template-store"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Link as LinkIcon, Building2, FileText } from "lucide-react"
+import { Loader2, Link as LinkIcon, Building2, FileText, Sparkles } from "lucide-react"
 
 interface ExtractedJobData {
   url: string
@@ -269,7 +269,9 @@ export function DocumentBuilder() {
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Key Words
                       </>
                     ) : (
-                      "Key Words"
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" /> Key Words
+                      </>
                     )}
                   </Button>
                 </div>
@@ -308,7 +310,7 @@ export function DocumentBuilder() {
           <DialogHeader>
             <DialogTitle className="text-popover-foreground">Generate Targeted Resume</DialogTitle>
             <DialogDescription>
-              Select a resume template containing {'{{Skills List}}'}. We’ll replace it with optimized bullets.
+              Select a resume template containing {'{{Job 01 Bullets}}'} and {'{{Skills List}}'} placeholders. We’ll insert optimized bullets and a single-line skills list.
             </DialogDescription>
           </DialogHeader>
 
@@ -340,7 +342,15 @@ export function DocumentBuilder() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsGenOpen(false)} className="border-border">Cancel</Button>
             <Button onClick={handleGenerateDocument} disabled={isGenLoading || isGeneratingDoc || !selectedTemplateId} className="bg-primary text-primary-foreground">
-              {isGeneratingDoc ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…</>) : 'Generate'}
+              {isGeneratingDoc ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" /> Generate
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

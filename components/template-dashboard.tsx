@@ -209,12 +209,12 @@ export function TemplateDashboard() {
 
       {/* Template Tabs */}
       <Tabs defaultValue="resume">
-        <TabsList className="mx-auto w-full max-w-xl px-0 pb-0 flex gap-2">
+        <TabsList className="sticky top-24 z-40 mx-auto w-full max-w-2xl px-0 pb-0 flex gap-2 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <TabsTrigger
             value="resume"
             className="rounded-t-md rounded-b-none px-4 py-1.5 text-sm font-medium text-muted-foreground border border-border transition -mb-px
                        hover:bg-background/60 hover:text-foreground
-                       data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-transparent"
+                       data-[state=active]:bg-muted-foreground data-[state=active]:text-muted dark:data-[state=active]:bg-muted dark:data-[state=active]:text-muted-foreground data-[state=active]:border-b-transparent"
           >
             <span className="inline-flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -225,7 +225,7 @@ export function TemplateDashboard() {
             value="coverLetter"
             className="rounded-t-md rounded-b-none px-4 py-1.5 text-sm font-medium text-muted-foreground border border-border transition -mb-px
                        hover:bg-background/60 hover:text-foreground
-                       data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:border-b-transparent"
+                       data-[state=active]:bg-muted-foreground data-[state=active]:text-muted dark:data-[state=active]:bg-muted dark:data-[state=active]:text-muted-foreground data-[state=active]:border-b-transparent"
           >
             <span className="inline-flex items-center gap-2">
               <FileText className="h-4 w-4" />

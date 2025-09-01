@@ -193,180 +193,196 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
           </DialogDescription>
         </DialogHeader>
 
-        {generatedDocumentId ? (
-          // Success state
-          <div className="py-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-              <FileText className="h-8 w-8 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-popover-foreground">Document Generated Successfully!</h3>
-              <p className="text-muted-foreground mt-1">Your customized document is ready.</p>
-            </div>
-            <div className="flex flex-col gap-3 items-center">
-              <div className="flex gap-3">
-                <Button
-                  onClick={() =>
-                    window.open(`https://docs.google.com/document/d/${generatedDocumentId}/edit`, "_blank")
-                  }
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                >
-                  Open in Google Docs
-                </Button>
-                <Button variant="outline" onClick={handleClose} className="border-border bg-transparent">
-                  Generate Another
-                </Button>
+        <AnimatePresence mode="wait">
+          {generatedDocumentId ? (
+            // Success state with transition
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="py-8 text-center space-y-4"
+            >
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+                <FileText className="h-8 w-8 text-primary" />
               </div>
-              <div className="flex items-center gap-2 pt-2 border-t border-border">
-                <span className="text-sm text-muted-foreground">Export as PDF:</span>
-                <PdfExportButton
-                  documentId={generatedDocumentId}
-                  documentName={documentName}
-                  variant="outline"
-                  size="sm"
+              <div>
+                <h3 className="text-lg font-semibold text-popover-foreground">Document Generated Successfully!</h3>
+                <p className="text-muted-foreground mt-1">Your customized document is ready.</p>
+              </div>
+              <div className="flex flex-col gap-3 items-center">
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() =>
+                      window.open(`https://docs.google.com/document/d/${generatedDocumentId}/edit`, "_blank")
+                    }
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    Open in Google Docs
+                  </Button>
+                  <Button variant="outline" onClick={handleClose} className="border-border bg-transparent">
+                    Generate Another
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                  <span className="text-sm text-muted-foreground">Export as PDF:</span>
+                  <PdfExportButton
+                    documentId={generatedDocumentId}
+                    documentName={documentName}
+                    variant="outline"
+                    size="sm"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            // Form state with transition container
+            <motion.div
+              key="formflow"
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="space-y-6 py-4"
+            >
+              {/* Template Info */}
+              <Card className="border-border bg-card/50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base text-card-foreground">{template.name}</CardTitle>
+                    <Badge variant="secondary">{template.type === "resume" ? "Resume" : "Cover Letter"}</Badge>
+                  </div>
+                  {template.description && <CardDescription className="text-sm">{template.description}</CardDescription>}
+                </CardHeader>
+              </Card>
+
+              {/* Document Name */}
+              <div className="space-y-2">
+                <Label htmlFor="document-name" className="text-popover-foreground">
+                  Document Name
+                </Label>
+                <Input
+                  id="document-name"
+                  value={documentName}
+                  onChange={(e) => setDocumentName(e.target.value)}
+                  placeholder="Enter a name for your generated document"
+                  className="bg-input border-border"
                 />
               </div>
-            </div>
-          </div>
-        ) : (
-          // Form state
-          <div className="space-y-6 py-4">
-            {/* Template Info */}
-            <Card className="border-border bg-card/50">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base text-card-foreground">{template.name}</CardTitle>
-                  <Badge variant="secondary">{template.type === "resume" ? "Resume" : "Cover Letter"}</Badge>
-                </div>
-                {template.description && <CardDescription className="text-sm">{template.description}</CardDescription>}
-              </CardHeader>
-            </Card>
 
-            {/* Document Name */}
-            <div className="space-y-2">
-              <Label htmlFor="document-name" className="text-popover-foreground">
-                Document Name
-              </Label>
-              <Input
-                id="document-name"
-                value={documentName}
-                onChange={(e) => setDocumentName(e.target.value)}
-                placeholder="Enter a name for your generated document"
-                className="bg-input border-border"
-              />
-            </div>
-
-            {/* Variables Form with animated transition */}
-            <AnimatePresence mode="wait">
-              {isLoading ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -12, scale: 0.98 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="py-6"
-                >
-                  <div className="text-sm text-muted-foreground mb-3">Preparing template…</div>
-                  <div className="space-y-3">
-                    {loadingSteps.isDocx && (
-                      <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
-                        {loadingSteps.converting ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        )}
-                        <span className="text-sm">Converting .docx to Google Docs format…</span>
-                      </motion.div>
-                    )}
-                    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
-                      {loadingSteps.variablesDone ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              {/* Variables Form with animated transition */}
+              <AnimatePresence mode="wait">
+                {isLoading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="py-6"
+                  >
+                    <div className="text-sm text-muted-foreground mb-3">Preparing template…</div>
+                    <div className="space-y-3">
+                      {loadingSteps.isDocx && (
+                        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
+                          {loadingSteps.converting ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          )}
+                          <span className="text-sm">Converting .docx to Google Docs format…</span>
+                        </motion.div>
                       )}
-                      <span className="text-sm">Loading template variables…</span>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="form"
-                  initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -12, scale: 0.98 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="space-y-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-popover-foreground">Fill in Template Variables</h3>
-                    <Badge variant="outline" className="text-xs">
-                      {variables.filter((v) => v.required).length} required fields
-                    </Badge>
-                  </div>
+                      <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
+                        {loadingSteps.variablesDone ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        )}
+                        <span className="text-sm">Loading template variables…</span>
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-popover-foreground">Fill in Template Variables</h3>
+                      <Badge variant="outline" className="text-xs">
+                        {variables.filter((v) => v.required).length} required fields
+                      </Badge>
+                    </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {variables.map((variable) => (
-                      <div key={variable.placeholder} className="space-y-2">
-                        <Label className="text-popover-foreground flex items-center gap-1">
-                          {variable.description}
-                          {variable.required && <span className="text-destructive">*</span>}
-                        </Label>
-                        {(() => {
-                          const lower = variable.placeholder.trim().toLowerCase()
-                          const isDateField = lower === "date" || lower === "today's date" || lower === "today’s date"
-                          if (isDateField) {
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {variables.map((variable) => (
+                        <div key={variable.placeholder} className="space-y-2">
+                          <Label className="text-popover-foreground flex items-center gap-1">
+                            {variable.description}
+                            {variable.required && <span className="text-destructive">*</span>}
+                          </Label>
+                          {(() => {
+                            const lower = variable.placeholder.trim().toLowerCase()
+                            const isDateField = lower === "date" || lower === "today's date" || lower === "today’s date"
+                            if (isDateField) {
+                              return (
+                                <Input
+                                  type="date"
+                                  value={formData[variable.placeholder] || ""}
+                                  onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                                  className="bg-input border-border"
+                                  required={variable.required}
+                                />
+                              )
+                            }
+                            if (
+                              variable.placeholder.includes("PARAGRAPH") ||
+                              variable.placeholder.includes("SUMMARY") ||
+                              variable.placeholder.includes("DESCRIPTION")
+                            ) {
+                              return (
+                                <Textarea
+                                  value={formData[variable.placeholder] || ""}
+                                  onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                                  placeholder={`Enter ${variable.description.toLowerCase()}`}
+                                  className="bg-input border-border min-h-[80px]"
+                                  required={variable.required}
+                                />
+                              )
+                            }
                             return (
                               <Input
-                                type="date"
                                 value={formData[variable.placeholder] || ""}
                                 onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
+                                placeholder={`Enter ${variable.description.toLowerCase()}`}
                                 className="bg-input border-border"
                                 required={variable.required}
                               />
                             )
-                          }
-                          if (
-                            variable.placeholder.includes("PARAGRAPH") ||
-                            variable.placeholder.includes("SUMMARY") ||
-                            variable.placeholder.includes("DESCRIPTION")
-                          ) {
-                            return (
-                              <Textarea
-                                value={formData[variable.placeholder] || ""}
-                                onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
-                                placeholder={`Enter ${variable.description.toLowerCase()}`}
-                                className="bg-input border-border min-h-[80px]"
-                                required={variable.required}
-                              />
-                            )
-                          }
-                          return (
-                            <Input
-                              value={formData[variable.placeholder] || ""}
-                              onChange={(e) => handleInputChange(variable.placeholder, e.target.value)}
-                              placeholder={`Enter ${variable.description.toLowerCase()}`}
-                              className="bg-input border-border"
-                              required={variable.required}
-                            />
-                          )
-                        })()}
-                      </div>
-                    ))}
-                  </div>
-
-                  {variables.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No variables found in this template.</p>
-                      <p className="text-sm">You can still generate the document as-is.</p>
+                          })()}
+                        </div>
+                      ))}
                     </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
+
+                    {variables.length === 0 && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No variables found in this template.</p>
+                        <p className="text-sm">You can still generate the document as-is.</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {!generatedDocumentId && (
           <DialogFooter>

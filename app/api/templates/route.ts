@@ -58,6 +58,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name, type, and folder ID are required" }, { status: 400 })
     }
 
+    // Prevent duplicate names within the same folder (case-insensitive, trimmed)
+    const existingFiles = await GoogleDriveService.listFiles(folderId)
+    const normalizedNewName = String(name).trim().toLowerCase()
+    const hasDuplicate = existingFiles.some((f) => String(f.name).trim().toLowerCase() === normalizedNewName)
+    if (hasDuplicate) {
+      return NextResponse.json(
+        { error: `A file named "${name}" already exists in this folder.` },
+        { status: 409 },
+      )
+    }
+
     // Create the template
     const template = await GoogleDocsService.createTemplate(name, type, folderId, content)
 

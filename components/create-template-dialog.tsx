@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FileText, Upload } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useTemplateStore } from "@/lib/template-store"
 
 interface CreateTemplateDialogProps {
   open: boolean
@@ -27,9 +28,13 @@ interface CreateTemplateDialogProps {
 export function CreateTemplateDialog({ open, onOpenChange, templateType }: CreateTemplateDialogProps) {
   const { data: session, status } = useSession()
   const { toast } = useToast()
+  const { folders } = useTemplateStore()
   const [templateName, setTemplateName] = useState("")
   const [templateDescription, setTemplateDescription] = useState("")
   const [creationMethod, setCreationMethod] = useState<"blank" | "upload" | "existing">("blank")
+  const [existingNames, setExistingNames] = useState<string[]>([])
+
+  const targetFolderId = templateType === "resume" ? folders.resumeFolderId : folders.coverLetterFolderId
 
   // Close dialog if user is not authenticated
   useEffect(() => {
@@ -43,11 +48,48 @@ export function CreateTemplateDialog({ open, onOpenChange, templateType }: Creat
     }
   }, [status, open, onOpenChange, toast])
 
+  // Load existing file names in the target folder when dialog opens
+  useEffect(() => {
+    const loadExisting = async () => {
+      if (!open || status !== "authenticated" || !targetFolderId) {
+        setExistingNames([])
+        return
+      }
+      try {
+        const resp = await fetch(`/api/templates?folderId=${targetFolderId}&type=${templateType}`)
+        if (!resp.ok) {
+          setExistingNames([])
+          return
+        }
+        const data = await resp.json()
+        const names = Array.isArray(data.templates)
+          ? data.templates.map((t: { name: string }) => String(t.name))
+          : []
+        setExistingNames(names)
+      } catch {
+        setExistingNames([])
+      }
+    }
+    loadExisting()
+  }, [open, status, targetFolderId, templateType])
+
   const handleCreate = () => {
     if (status !== "authenticated") {
       toast({
         title: "Authentication Required",
         description: "Please sign in to create templates.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Prevent duplicate names within the same folder (case-insensitive, trimmed)
+    const normalized = templateName.trim().toLowerCase()
+    const duplicate = normalized.length > 0 && existingNames.some((n) => String(n).trim().toLowerCase() === normalized)
+    if (duplicate) {
+      toast({
+        title: "Duplicate name",
+        description: `A file named "${templateName}" already exists in this folder.`,
         variant: "destructive",
       })
       return

@@ -58,6 +58,7 @@
     "next-auth": "5.0.0-beta.29",
     "next-themes": "latest",
     "nodemailer": "latest",
+
     "react": "^19",
     "react-day-picker": "9.8.0",
     "react-dom": "^19",

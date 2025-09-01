@@ -18,7 +18,7 @@
   --muted-foreground: oklch(0.45 0 0); /* Muted text color */
   --accent: oklch(0.75 0.15 120); /* Bright green accent (#84cc16) */
   --accent-foreground: oklch(0.35 0.08 195); /* Cyan-800 accent text */
-  --destructive: oklch(0.577 0.245 27.325); /* Red for errors */
+  --destructive: oklch(49.484% 0.18423 25.246); /* Red for errors */
   --destructive-foreground: oklch(1 0 0); /* White text on destructive */
   --border: oklch(0.85 0 0); /* Light gray borders */
   --input: oklch(0.98 0 0); /* Light input background */
@@ -54,7 +54,7 @@
   --muted-foreground: oklch(0.7 0 0); /* Muted text */
   --accent: oklch(0.7 0.12 120); /* Dimmed green accent for dark mode */
   --accent-foreground: oklch(0.1 0 0); /* Dark accent text */
-  --destructive: oklch(0.5 0.2 25); /* Dimmed red for dark mode */
+  --destructive: oklch(43.535% 0.15536 2.929); /* Dimmed red for dark mode */
   --destructive-foreground: oklch(0.95 0 0); /* Light text on destructive */
   --border: oklch(0.25 0 0); /* Dark borders */
   --input: oklch(0.25 0 0); /* Dark input background */

@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FolderOpen, Plus, ExternalLink, Folder, Loader2 } from "lucide-react"
+import { FolderOpen, Plus, ExternalLink, Folder, Loader2, Trash2 } from "lucide-react"
 import { GooglePickerWrapper } from "@/components/google-picker-wrapper"
 import { useToast } from "@/hooks/use-toast"
 import { useTemplateStore } from "@/lib/template-store"
@@ -24,9 +24,10 @@ interface FolderSetupDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSetupComplete?: () => void
+  onCleared?: () => void
 }
 
-export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: FolderSetupDialogProps) {
+export function FolderSetupDialog({ open, onOpenChange, onSetupComplete, onCleared }: FolderSetupDialogProps) {
   const { data: session, status } = useSession()
   const [setupMethod, setSetupMethod] = useState<"new" | "existing">("new")
   const [folderName, setFolderName] = useState("DocTailor Templates")
@@ -35,6 +36,8 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
   const [pickerActive, setPickerActive] = useState(false)
   const [switchedToExisting, setSwitchedToExisting] = useState(false)
   const { toast } = useToast()
+  const { clearStorage, fetchFolders, folders } = useTemplateStore()
+  const hasSelection = !!(folders?.mainFolderId || folders?.resumeFolderId || folders?.coverLetterFolderId || folders?.parentFolderId)
 
   // Close dialog if user is not authenticated
   useEffect(() => {
@@ -308,6 +311,24 @@ export function FolderSetupDialog({ open, onOpenChange, onSetupComplete }: Folde
             >
               Cancel
             </Button>
+            {hasSelection && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  try {
+                    clearStorage()
+                    fetchFolders().catch(() => {})
+                    toast({ title: "Folder selection cleared", description: "Local folder settings were removed." })
+                    onCleared && onCleared()
+                    onOpenChange(false)
+                  } catch {}
+                }}
+                className="border-destructive text-destructive hover:bg-destructive/10 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear Selection
+              </Button>
+            )}
             <Button
               onClick={setupMethod === "existing" && selectedParentFolder ?
                 () => setupFolders(selectedParentFolder.id, selectedParentFolder.name) :

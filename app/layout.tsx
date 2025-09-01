@@ -5,7 +5,6 @@ import { GeistMono } from "geist/font/mono";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Providers } from "@/components/providers";
-import { FooterWrapper } from "@/components/footer-wrapper";
 import { Suspense } from "react";
 import "./globals.css";
 
@@ -43,7 +42,6 @@ export default function RootLayout({
             >
               <div className="min-h-screen flex flex-col transition-colors duration-300">
                 {children}
-                {/* <FooterWrapper /> */}
               </div>
             </ThemeProvider>
           </Providers>

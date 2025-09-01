@@ -28,11 +28,13 @@ export async function POST(request: NextRequest) {
     if (mime === docxMime) {
       const parentId = (meta.data.parents && meta.data.parents[0]) || undefined
       const converted = await GoogleDriveService.convertDocxToGoogleDoc(fileId, meta.data.name, parentId)
+      let deleteSucceeded = false
 
       // Optionally delete the original .docx
       if (deleteOriginal) {
         try {
           await GoogleDriveService.deleteFile(fileId)
+          deleteSucceeded = true
         } catch (e) {
           console.warn("Failed to delete original .docx:", (e as Error).message)
         }
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({ workingId: converted.id, wasConverted: true })
+      return NextResponse.json({ workingId: converted.id, wasConverted: true, deletedOriginal: deleteSucceeded })
     }
 
     return NextResponse.json({ error: "Unsupported file type" }, { status: 400 })

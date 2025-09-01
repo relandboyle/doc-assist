@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { FileText, FolderOpen, Settings, Edit, Copy, Eye, Sparkles, Trash2 } from "lucide-react"
+import { FileText, FolderOpen, Settings, Edit, Copy, Eye, Sparkles, Trash2, RefreshCw } from "lucide-react"
 import { FolderSetupDialog } from "@/components/folder-setup-dialog"
 import { GenerateDocumentDialog } from "@/components/generate-document-dialog"
 import { PdfExportButton } from "@/components/pdf-export-button"
@@ -27,6 +27,7 @@ export function TemplateDashboard() {
   const [coverLetterTemplates, setCoverLetterTemplates] = useState<any[]>([])
 
   const { folders, isLoading, fetchFolders, initializeFromStorage } = useTemplateStore()
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useEffect(() => {
     // Only initialize from localStorage if user is authenticated
@@ -36,36 +37,36 @@ export function TemplateDashboard() {
     }
   }, [status])
 
-  useEffect(() => {
-    // Fetch resume templates into local state
-    const run = async () => {
-      if (status !== "authenticated" || !folders.resumeFolderId) return
-      try {
-        const resp = await fetch(`/api/templates?folderId=${folders.resumeFolderId}&type=resume`)
-        if (!resp.ok) return setResumeTemplates([])
-        const data = await resp.json()
-        setResumeTemplates(Array.isArray(data.templates) ? data.templates : [])
-      } catch {
-        setResumeTemplates([])
-      }
+  const fetchResumeTemplates = async () => {
+    if (status !== "authenticated" || !folders.resumeFolderId) return
+    try {
+      const resp = await fetch(`/api/templates?folderId=${folders.resumeFolderId}&type=resume`)
+      if (!resp.ok) return setResumeTemplates([])
+      const data = await resp.json()
+      setResumeTemplates(Array.isArray(data.templates) ? data.templates : [])
+    } catch {
+      setResumeTemplates([])
     }
-    run()
-  }, [folders.resumeFolderId, status])
+  }
 
   useEffect(() => {
-    // Fetch cover letter templates into local state
-    const run = async () => {
-      if (status !== "authenticated" || !folders.coverLetterFolderId) return
-      try {
-        const resp = await fetch(`/api/templates?folderId=${folders.coverLetterFolderId}&type=coverLetter`)
-        if (!resp.ok) return setCoverLetterTemplates([])
-        const data = await resp.json()
-        setCoverLetterTemplates(Array.isArray(data.templates) ? data.templates : [])
-      } catch {
-        setCoverLetterTemplates([])
-      }
+    fetchResumeTemplates()
+  }, [folders.resumeFolderId, status])
+
+  const fetchCoverLetterTemplates = async () => {
+    if (status !== "authenticated" || !folders.coverLetterFolderId) return
+    try {
+      const resp = await fetch(`/api/templates?folderId=${folders.coverLetterFolderId}&type=coverLetter`)
+      if (!resp.ok) return setCoverLetterTemplates([])
+      const data = await resp.json()
+      setCoverLetterTemplates(Array.isArray(data.templates) ? data.templates : [])
+    } catch {
+      setCoverLetterTemplates([])
     }
-    run()
+  }
+
+  useEffect(() => {
+    fetchCoverLetterTemplates()
   }, [folders.coverLetterFolderId, status])
 
   // Fetch accurate counts for each folder independently of the shared templates list
@@ -104,6 +105,33 @@ export function TemplateDashboard() {
       fetchCounts()
     }
   }, [status, folders.resumeFolderId, folders.coverLetterFolderId])
+
+  const refreshTemplates = async () => {
+    setIsRefreshing(true)
+    await Promise.all([fetchResumeTemplates(), fetchCoverLetterTemplates()])
+    // Also refresh counts afterwards
+    try {
+      const [resumeResp, coverResp] = await Promise.all([
+        folders.resumeFolderId
+          ? fetch(`/api/templates?folderId=${folders.resumeFolderId}&type=resume`)
+          : Promise.resolve(null as unknown as Response),
+        folders.coverLetterFolderId
+          ? fetch(`/api/templates?folderId=${folders.coverLetterFolderId}&type=coverLetter`)
+          : Promise.resolve(null as unknown as Response),
+      ])
+      if (resumeResp && resumeResp.ok) {
+        const data = await resumeResp.json()
+        setResumeCount(Array.isArray(data.templates) ? data.templates.length : 0)
+      }
+      if (coverResp && coverResp.ok) {
+        const data = await coverResp.json()
+        setCoverCount(Array.isArray(data.templates) ? data.templates.length : 0)
+      }
+    } catch {}
+    finally {
+      setIsRefreshing(false)
+    }
+  }
 
   // Don't render anything if session is loading or not authenticated
   if (status === "loading") {
@@ -162,6 +190,16 @@ export function TemplateDashboard() {
           >
             <FolderOpen className="h-4 w-4 mr-2" />
             {folders.mainFolderId ? "Manage Folders" : "Setup Folders"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={refreshTemplates}
+            disabled={isRefreshing}
+            className="border-border"
+            title="Refresh template list"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
           </Button>
         </div>
       </div>
@@ -297,13 +335,24 @@ export function TemplateDashboard() {
       <FolderSetupDialog
         open={showFolderDialog}
         onOpenChange={setShowFolderDialog}
-        onSetupComplete={fetchFolders}
+        onSetupComplete={async () => {
+          await fetchFolders()
+          await refreshTemplates()
+        }}
+        onCleared={async () => {
+          // Clear local UI lists and counts when folders are cleared
+          setResumeTemplates([])
+          setCoverLetterTemplates([])
+          setResumeCount(0)
+          setCoverCount(0)
+        }}
       />
 
       <GenerateDocumentDialog
         open={showGenerateDialog}
         onOpenChange={setShowGenerateDialog}
         template={selectedTemplate}
+        onTemplatesRefresh={refreshTemplates}
       />
 
       <TemplatePreviewDialog

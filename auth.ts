@@ -8,7 +8,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
-          scope: "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/documents",
+          scope: "openid email profile https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents",
           access_type: "offline",
           prompt: "consent",
         },
@@ -81,8 +81,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       session.accessToken = token.accessToken as string
       session.refreshToken = token.refreshToken as string
-      // @ts-expect-error extend session for client error handling
-      session.error = (token as any).error
+      ;(session as any).error = (token as any).error
       return session
     },
   },

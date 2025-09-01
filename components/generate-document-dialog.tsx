@@ -37,9 +37,10 @@ interface GenerateDocumentDialogProps {
     description?: string
     type: "resume" | "coverLetter"
   } | null
+  onTemplatesRefresh?: () => void
 }
 
-export function GenerateDocumentDialog({ open, onOpenChange, template }: GenerateDocumentDialogProps) {
+export function GenerateDocumentDialog({ open, onOpenChange, template, onTemplatesRefresh }: GenerateDocumentDialogProps) {
   const { data: session, status } = useSession()
   const { toast } = useToast()
   const { folders } = useTemplateStore()
@@ -50,6 +51,9 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
   const [loadingSteps, setLoadingSteps] = useState<{ converting: boolean; variables: boolean; isDocx: boolean; variablesDone: boolean }>({ converting: false, variables: false, isDocx: false, variablesDone: false })
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedDocumentId, setGeneratedDocumentId] = useState<string | null>(null)
+  const [docxConsentNeeded, setDocxConsentNeeded] = useState(false)
+  const [docxSourceId, setDocxSourceId] = useState<string | null>(null)
+  const [docxChoice, setDocxChoice] = useState<'delete' | 'archive' | 'keep' | null>(null)
 
   // Close dialog if user is not authenticated
   useEffect(() => {
@@ -66,58 +70,76 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
   // Load template variables when dialog opens
   useEffect(() => {
     if (open && template && status === "authenticated") {
-      loadTemplateVariables()
+      initializeTemplate()
       setDocumentName(`${template.name} - ${new Date().toLocaleDateString()}`)
     }
   }, [open, template, status])
 
-  const loadTemplateVariables = async () => {
+  const initializeTemplate = async () => {
     if (!template || status !== "authenticated") return
-
-    setIsLoading(true)
     const isDocxByName = !!template.name && template.name.toLowerCase().endsWith(".docx")
-    // Start state: show convert (if .docx) and variables row (spinner), none done yet
-    setLoadingSteps({ converting: isDocxByName, variables: true, isDocx: isDocxByName, variablesDone: false })
-    try {
-      let workingId = template.id
-      if (isDocxByName) {
-        // 1) Prepare/convert if needed
-        const prepResp = await fetch(`/api/templates/convert`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId: template.id }),
-        })
-        if (!prepResp.ok) throw new Error("Failed to prepare template")
-        const prep = await prepResp.json()
-        workingId = prep.workingId
-        // conversion done
-        setLoadingSteps((s) => ({ ...s, converting: false, isDocx: true }))
-      }
+    if (isDocxByName) {
+      setDocxConsentNeeded(true)
+      setDocxSourceId(template.id)
+      // Prime loading steps UI but pause actual work until user chooses
+      setLoadingSteps({ converting: false, variables: false, isDocx: true, variablesDone: false })
+      return
+    }
+    await loadVariablesForWorkingId(template.id)
+  }
 
-      // 2) Fetch variables
+  const loadVariablesForWorkingId = async (workingId: string) => {
+    setIsLoading(true)
+    setLoadingSteps((s) => ({ ...s, variables: true }))
+    try {
       const varsResp = await fetch(`/api/templates/variables?fileId=${workingId}`)
       if (!varsResp.ok) throw new Error("Failed to load variables")
       const varsData = await varsResp.json()
       setVariables(varsData.variables || [])
 
-      // Initialize form data with empty values
       const initialFormData: Record<string, string> = {}
       ;(varsData.variables || []).forEach((variable: TemplateVariable) => {
         initialFormData[variable.placeholder] = ""
       })
       setFormData(initialFormData)
-      // Mark variables step done, but keep loading visible briefly
       setLoadingSteps((s) => ({ ...s, variablesDone: true }))
     } catch (error) {
       console.error("Error loading template variables:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load template variables.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to load template variables.", variant: "destructive" })
     } finally {
-      // Small delay so the completed state is visible
-      setTimeout(() => setIsLoading(false), 1000)
+      setTimeout(() => setIsLoading(false), 800)
+    }
+  }
+
+  const handleDocxChoice = async (choice: 'delete' | 'archive' | 'keep') => {
+    if (!docxSourceId) return
+    try {
+      setDocxChoice(choice)
+      // Hide the other buttons immediately
+      setIsLoading(true)
+      setLoadingSteps({ converting: true, variables: false, isDocx: true, variablesDone: false })
+      const body: any = { fileId: docxSourceId }
+      if (choice === 'delete') body.deleteOriginal = true
+      if (choice === 'archive') body.moveOriginalToArchive = true
+      const prepResp = await fetch(`/api/templates/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      if (!prepResp.ok) throw new Error("Failed to convert template")
+      const prep = await prepResp.json()
+      if (choice === 'delete' && !prep.deletedOriginal) {
+        toast({ title: "Delete failed", description: "Original .docx could not be deleted. You may lack Drive permissions.", variant: "destructive" })
+      }
+      setLoadingSteps((s) => ({ ...s, converting: false }))
+      setDocxConsentNeeded(false)
+      setDocxChoice(null)
+      setDocxSourceId(null)
+      // Refresh template lists/counters in the dashboard
+      onTemplatesRefresh && onTemplatesRefresh()
+      await loadVariablesForWorkingId(prep.workingId)
+    } catch (e) {
+      toast({ title: "Conversion failed", description: (e as Error).message, variant: "destructive" })
     }
   }
 
@@ -256,6 +278,43 @@ export function GenerateDocumentDialog({ open, onOpenChange, template }: Generat
                   {template.description && <CardDescription className="text-sm">{template.description}</CardDescription>}
                 </CardHeader>
               </Card>
+
+              {/* If DOCX, ask user what to do with original before converting */}
+              {docxConsentNeeded && (
+                <Card className="border-border bg-card/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base text-card-foreground">Original .docx Detected</CardTitle>
+                    <CardDescription className="text-sm">
+                      Convert this template to Google Docs and then:
+                    </CardDescription>
+                  </CardHeader>
+                  <div className="px-6 pb-4 flex flex-col gap-2">
+                    {docxChoice === null && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button onClick={() => handleDocxChoice('delete')} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete original .docx
+                        </Button>
+                        <Button onClick={() => handleDocxChoice('archive')} variant="outline" className="border-border">
+                          Move original to "Originals (Archived)"
+                        </Button>
+                        <Button onClick={() => handleDocxChoice('keep')} variant="secondary">
+                          Keep both files
+                        </Button>
+                      </div>
+                    )}
+                    {docxChoice !== null && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <span>
+                          {docxChoice === 'delete' && 'Chosen: Delete original .docx'}
+                          {docxChoice === 'archive' && 'Chosen: Move original to "Originals (Archived)"'}
+                          {docxChoice === 'keep' && 'Chosen: Keep both files'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
 
               {/* Document Name */}
               <div className="space-y-2">

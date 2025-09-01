@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, FolderOpen, Settings, Edit, Copy, Eye, Sparkles } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { FileText, FolderOpen, Settings, Edit, Copy, Eye, Sparkles, Trash2 } from "lucide-react"
 import { FolderSetupDialog } from "@/components/folder-setup-dialog"
 import { GenerateDocumentDialog } from "@/components/generate-document-dialog"
 import { PdfExportButton } from "@/components/pdf-export-button"
@@ -130,6 +131,18 @@ export function TemplateDashboard() {
     setShowGenerateDialog(true)
   }
 
+  const handleDeleteTemplate = async (templateId: string) => {
+    try {
+      const res = await fetch(`/api/templates/${templateId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      // Optimistically remove from local state arrays
+      setResumeTemplates((arr) => arr.filter((t) => t.id !== templateId))
+      setCoverLetterTemplates((arr) => arr.filter((t) => t.id !== templateId))
+    } catch (e) {
+      console.error('Failed to delete template:', e)
+    }
+  }
+
   // Local state arrays hold templates for each tab (state variables above)
 
   return (
@@ -234,6 +247,7 @@ export function TemplateDashboard() {
                 type="resume"
                 onGenerate={() => handleGenerateDocument(template)}
                 onPreview={() => setPreviewTemplate(template)}
+                onDelete={() => handleDeleteTemplate(template.id)}
               />
             ))}
 
@@ -262,6 +276,7 @@ export function TemplateDashboard() {
                 type="coverLetter"
                 onGenerate={() => handleGenerateDocument(template)}
                 onPreview={() => setPreviewTemplate(template)}
+                onDelete={() => handleDeleteTemplate(template.id)}
               />
             ))}
 
@@ -314,9 +329,10 @@ interface TemplateCardProps {
   type: "resume" | "coverLetter"
   onGenerate: () => void
   onPreview: () => void
+  onDelete: () => void
 }
 
-function TemplateCard({ template, type, onGenerate, onPreview }: TemplateCardProps) {
+function TemplateCard({ template, type, onGenerate, onPreview, onDelete }: TemplateCardProps) {
   const isDocx = template.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
   return (
     <Card className="border-border bg-card hover:shadow-md transition-shadow">
@@ -340,61 +356,96 @@ function TemplateCard({ template, type, onGenerate, onPreview }: TemplateCardPro
         </div>
 
         <div className="space-y-2">
-          {!isDocx ? (
-            <Button onClick={onGenerate} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Sparkles className="h-4 w-4 mr-2" />
-              Generate Document
-            </Button>
-          ) : (
-            <Button
-              onClick={onGenerate}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-              title="This .docx will be converted to a Google Doc during generation"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Convert & Generate
-            </Button>
-          )}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {!isDocx ? (
+                  <Button onClick={onGenerate} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate Document
+                  </Button>
+                ) : (
+                  <Button onClick={onGenerate} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Convert & Generate
+                  </Button>
+                )}
+              </TooltipTrigger>
+              <TooltipContent>{!isDocx ? "Generate from template" : "Convert .docx and generate"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <div className="flex items-center gap-2 w-full">
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 min-w-0 bg-transparent"
-              onClick={onPreview}
-            >
-              <Eye className="h-4 w-4 mr-2" />
-              <span className="truncate">Preview</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 min-w-0 bg-transparent"
-              onClick={() => {
-                const googleDocs = "application/vnd.google-apps.document"
-                const url = template.mimeType === googleDocs
-                  ? `https://docs.google.com/document/d/${template.id}/edit`
-                  : `https://drive.google.com/file/d/${template.id}/view`
-                window.open(url, "_blank", "noopener,noreferrer")
-              }}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              <span className="truncate">Edit</span>
-            </Button>
-            {/* <Button size="sm" variant="outline">
-              <Copy className="h-4 w-4" />
-            </Button> */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1 min-w-0">
+                    <Button size="sm" variant="outline" className="w-full bg-transparent" onClick={onPreview}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>Preview</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1 min-w-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full bg-transparent"
+                      onClick={() => {
+                        const googleDocs = "application/vnd.google-apps.document"
+                        const url = template.mimeType === googleDocs
+                          ? `https://docs.google.com/document/d/${template.id}/edit`
+                          : `https://drive.google.com/file/d/${template.id}/view`
+                        window.open(url, "_blank", "noopener,noreferrer")
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>Edit in Google Docs</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             {!isDocx && (
-              <PdfExportButton
-                documentId={template.id}
-                documentName={template.name}
-                variant="outline"
-                size="sm"
-                showText={true}
-                showOpenInBrowser={false}
-                className="flex-1 min-w-0"
-              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex-1 min-w-0">
+                      <PdfExportButton
+                        documentId={template.id}
+                        documentName={template.name}
+                        variant="outline"
+                        size="sm"
+                        showText={false}
+                        showOpenInBrowser={false}
+                        className="w-full"
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Export PDF</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1 min-w-0">
+                    <Button size="sm" variant="outline" className="w-full bg-transparent" onClick={onDelete}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </CardContent>

@@ -110,8 +110,8 @@ export function PdfExportButton({
     }
   }
 
-  return (
-    <div className={cn("flex items-center gap-1", fullWidth ? "w-full" : undefined, className)}>
+  if (!showOpenInBrowser) {
+    return (
       <Button
         onClick={handleExportPdf}
         disabled={isExporting}
@@ -124,18 +124,32 @@ export function PdfExportButton({
           <span className="ml-2">{isExporting ? "Exporting..." : "PDF"}</span>
         )}
       </Button>
+    )
+  }
 
-      {showOpenInBrowser && (
-        <Button
-          onClick={handleOpenPdfInBrowser}
-          variant="ghost"
-          size={size === "sm" ? "sm" : "default"}
-          className="px-2"
-          title="Open PDF in browser"
-        >
-          <ExternalLink className="h-4 w-4" />
-        </Button>
-      )}
+  return (
+    <div className={cn("flex items-center gap-1", fullWidth ? "w-full" : undefined)}>
+      <Button
+        onClick={handleExportPdf}
+        disabled={isExporting}
+        variant={variant}
+        size={size}
+        className={cn("bg-transparent", fullWidth ? "w-full justify-center" : undefined)}
+      >
+        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        {showText && (
+          <span className="ml-2">{isExporting ? "Exporting..." : "PDF"}</span>
+        )}
+      </Button>
+      <Button
+        onClick={handleOpenPdfInBrowser}
+        variant="ghost"
+        size={size === "sm" ? "sm" : "default"}
+        className="px-2"
+        title="Open PDF in browser"
+      >
+        <ExternalLink className="h-4 w-4" />
+      </Button>
     </div>
   )
 }

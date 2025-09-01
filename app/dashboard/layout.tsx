@@ -11,11 +11,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="flex flex-col min-h-dvh bg-gradient-to-br from-background to-muted">
       <DashboardHeader />
-      <div className="flex flex-1 gap-4">
+      <div className="flex flex-1">
         <DashboardSidebar />
         <div className="flex-1 min-w-0">
-          <div className="container mx-auto px-4 py-6">
-            {children}
+          <div className="flex justify-center px-4 py-6">
+            <div className="w-full max-w-5xl">
+              {children}
+            </div>
           </div>
         </div>
       </div>

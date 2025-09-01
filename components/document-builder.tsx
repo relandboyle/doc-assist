@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useTemplateStore } from "@/lib/template-store"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, Link as LinkIcon, Building2, FileText } from "lucide-react"
 
@@ -18,11 +21,26 @@ interface ExtractedJobData {
 
 export function DocumentBuilder() {
   const { toast } = useToast()
+  const { folders, initializeFromStorage } = useTemplateStore()
   const [jobUrl, setJobUrl] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [jobData, setJobData] = useState<ExtractedJobData | null>(null)
   const [isKeywordsLoading, setIsKeywordsLoading] = useState(false)
   const [keywords, setKeywords] = useState<string[] | null>(null)
+  const [isGenOpen, setIsGenOpen] = useState(false)
+  const [isGenLoading, setIsGenLoading] = useState(false)
+  const [templates, setTemplates] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("")
+  const [libraryBullets, setLibraryBullets] = useState<string[]>([])
+  const [genName, setGenName] = useState<string>("")
+  const [isGeneratingDoc, setIsGeneratingDoc] = useState(false)
+
+  // Ensure folder IDs are available when landing directly on Builder
+  // Load from localStorage on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useState(() => {
+    try { initializeFromStorage() } catch {}
+  })
 
   const handleExtract = async () => {
     try {
@@ -121,6 +139,80 @@ export function DocumentBuilder() {
     }
   }
 
+  const openGenerateDialog = async () => {
+    try {
+      if (!jobData?.title || !keywords || keywords.length === 0) {
+        toast({ title: "Complete previous steps", description: "Extract job data and generate keywords first.", variant: "destructive" })
+        return
+      }
+      if (!folders?.mainFolderId) {
+        toast({ title: "Select folders first", description: "Use Folder Setup to configure your Drive folders.", variant: "destructive" })
+        return
+      }
+      setIsGenLoading(true)
+      setIsGenOpen(true)
+      setGenName(`${jobData.title} - Targeted Resume (${new Date().toLocaleDateString()})`)
+
+      // Fetch Library bullets from the main folder
+      const libResp = await fetch(`/api/library/bullets?folderId=${folders.mainFolderId}`)
+      const libData = await libResp.json().catch(() => ({ bullets: [] }))
+      setLibraryBullets(Array.isArray(libData.bullets) ? libData.bullets : [])
+
+      // Fetch resume templates for selection
+      if (folders?.resumeFolderId) {
+        const tResp = await fetch(`/api/templates?folderId=${folders.resumeFolderId}&type=resume`)
+        const tData = await tResp.json().catch(() => ({ templates: [] }))
+        const mapped = Array.isArray(tData.templates) ? tData.templates.map((t: any) => ({ id: t.id, name: t.name })) : []
+        setTemplates(mapped)
+        if (mapped.length > 0) setSelectedTemplateId(mapped[0].id)
+      }
+    } catch (e) {
+      toast({ title: "Setup incomplete", description: "Could not load Library or templates.", variant: "destructive" })
+    } finally {
+      setIsGenLoading(false)
+    }
+  }
+
+  const handleGenerateDocument = async () => {
+    try {
+      if (!selectedTemplateId) {
+        toast({ title: "Select a template", description: "Choose a resume template to generate from.", variant: "destructive" })
+        return
+      }
+      if (!jobData?.title || !keywords?.length || !libraryBullets.length) {
+        toast({ title: "Missing data", description: "Ensure job title, keywords, and Library bullets are loaded.", variant: "destructive" })
+        return
+      }
+      setIsGeneratingDoc(true)
+      const resp = await fetch('/api/builder/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateId: selectedTemplateId,
+          folderId: folders.generatedResumeFolderId || folders.resumeFolderId,
+          jobTitle: jobData.title,
+          keywords,
+          bullets: libraryBullets,
+          documentName: genName || `${jobData.title} - Targeted Resume`,
+        }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({} as any))
+        throw new Error(err?.error || 'Failed to generate document')
+      }
+      const data = await resp.json()
+      toast({ title: 'Document generated', description: 'Opening in Google Docs…' })
+      if (data?.documentId) {
+        window.open(`https://docs.google.com/document/d/${data.documentId}/edit`, '_blank', 'noopener,noreferrer')
+      }
+      setIsGenOpen(false)
+    } catch (e) {
+      toast({ title: 'Generation failed', description: (e as Error).message, variant: 'destructive' })
+    } finally {
+      setIsGeneratingDoc(false)
+    }
+  }
+
   return (
     <div className="container mx-auto px-0 sm:px-2">
       <Card className="border-border bg-card/50">
@@ -201,12 +293,58 @@ export function DocumentBuilder() {
                       <Badge key={`${kw}-${idx}`} variant="secondary">{kw}</Badge>
                     ))}
                   </div>
+                  <div>
+                    <Button onClick={openGenerateDialog} className="mt-2 bg-primary text-primary-foreground">Generate Document</Button>
+                  </div>
                 </div>
               )}
             </>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isGenOpen} onOpenChange={setIsGenOpen}>
+        <DialogContent className="sm:max-w-[580px] bg-popover border-border">
+          <DialogHeader>
+            <DialogTitle className="text-popover-foreground">Generate Targeted Resume</DialogTitle>
+            <DialogDescription>
+              Select a resume template containing {'{{Skills List}}'}. We’ll replace it with optimized bullets.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-popover-foreground">Template</Label>
+              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId} disabled={isGenLoading || templates.length === 0}>
+                <SelectTrigger className="bg-input border-border">
+                  <SelectValue placeholder={isGenLoading ? 'Loading templates…' : 'Select a template'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-popover-foreground">Document Name</Label>
+              <Input value={genName} onChange={(e) => setGenName(e.target.value)} className="bg-input border-border" />
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              {isGenLoading ? 'Loading Library bullets…' : `${libraryBullets.length} bullets found in Library`}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGenOpen(false)} className="border-border">Cancel</Button>
+            <Button onClick={handleGenerateDocument} disabled={isGenLoading || isGeneratingDoc || !selectedTemplateId} className="bg-primary text-primary-foreground">
+              {isGeneratingDoc ? (<><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…</>) : 'Generate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

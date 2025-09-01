@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -36,11 +36,11 @@ export function DocumentBuilder() {
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false)
 
   // Ensure folder IDs are available when landing directly on Builder
-  // Load from localStorage on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useState(() => {
+  // Load from localStorage after mount to avoid state updates during render
+  useEffect(() => {
     try { initializeFromStorage() } catch {}
-  })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleExtract = async () => {
     try {

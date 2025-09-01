@@ -43,7 +43,7 @@ export default function RootLayout({
             >
               <div className="min-h-screen flex flex-col transition-colors duration-300">
                 {children}
-                <FooterWrapper />
+                {/* <FooterWrapper /> */}
               </div>
             </ThemeProvider>
           </Providers>

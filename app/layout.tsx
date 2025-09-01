@@ -40,9 +40,8 @@ export default function RootLayout({
               attribute="class"
               defaultTheme="system"
               enableSystem
-              disableTransitionOnChange
             >
-              <div className="min-h-screen flex flex-col">
+              <div className="min-h-screen flex flex-col transition-colors duration-300">
                 {children}
                 <FooterWrapper />
               </div>

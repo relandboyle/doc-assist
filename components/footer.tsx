@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { FileText } from "lucide-react"
+import Image from "next/image"
 
 export function Footer() {
   return (
@@ -7,7 +7,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
           <div className="flex items-center space-x-2">
-            <FileText className="h-5 w-5 text-primary" />
+            <Image src="/icon.png" alt="Doc Tailor" width={20} height={20} />
             <span className="font-semibold">Doc Tailor</span>
           </div>
 

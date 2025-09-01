@@ -11,7 +11,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { FileText, LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User } from "lucide-react"
+import Link from "next/link"
+import Image from "next/image"
 import { ThemeToggle } from "./theme-toggle"
 
 export function DashboardHeader() {
@@ -36,11 +38,14 @@ export function DashboardHeader() {
       <header className="sticky top-0 z-50 w-full border-b px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center space-x-2">
-            <FileText className="h-6 w-6 text-primary" />
+            <Image src="/icon.png" alt="Doc Tailor" width={42} height={42} className="rounded-md border border-border bg-background" />
             <span className="font-semibold">Doc Tailor</span>
           </div>
 
           <div className="flex items-center space-x-4">
+            <Button variant="link" asChild>
+              <Link href="/guide/templates">Guide</Link>
+            </Button>
             <ThemeToggle />
           </div>
         </div>
@@ -52,11 +57,14 @@ export function DashboardHeader() {
     <header className="sticky top-0 z-50 w-full border-b px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-14 items-center justify-between">
         <div className="flex items-center space-x-2">
-          <FileText className="h-6 w-6 text-primary" />
+          <Image src="/icon.png" alt="Doc Tailor" width={42} height={42} className="rounded-md border border-border bg-background" />
           <span className="font-semibold">Doc Tailor</span>
         </div>
 
         <div className="flex items-center space-x-4">
+          <Button variant="link" asChild>
+            <Link href="/guide/templates">Guide</Link>
+          </Button>
           <ThemeToggle />
 
           <DropdownMenu>

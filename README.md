@@ -42,4 +42,7 @@ Doc Tailor helps you generate targeted resumes and cover letters from reusable G
 
 ## Notes
 
-- The app centers content next to a collapsible sidebar and reserves scrollbar space to avoid layout shifts.
+- Library doc: Place a Google Doc named "Library" in your selected main folder. Its bullet points feed the Document Builder's optimization step.
+- Placeholders: Ensure your resume template contains `{{Job 01 Bullets}}` and `{{Skills List}}` so the builder can insert optimized content without breaking formatting.
+- DOCX handling: When using a .docx template, you’ll be asked to Delete, Move to "Originals (Archived)", or Keep the original after conversion.
+- Troubleshooting: If templates don’t appear after Drive changes, click Refresh on the Template Library. Use “Clear Selection” in Folder Setup to reset stored folder configuration.

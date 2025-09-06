@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FileText, Zap, Shield, Download } from "lucide-react"
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { Footer } from "@/components/footer"
 
 export default async function HomePage() {
   const session = await auth()
@@ -14,7 +15,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 content-center items-center w-full bg-gradient-to-br from-background to-muted">
+    <div className="flex flex-col flex-1 w-full bg-gradient-to-br from-background to-muted">
       <header className="sticky top-0 z-50 border-b w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center space-x-2">
@@ -30,7 +31,7 @@ export default async function HomePage() {
         </div>
       </header>
 
-      <main className="flex-1 container py-16">
+      <main className="flex flex-col items-center flex-1 p-16">
         <div className="mx-auto max-w-4xl text-center">
           <h1 className="text-4xl font-bold tracking-tight text-balance sm:text-6xl">
             Professional Document Templates Made Simple
@@ -94,6 +95,7 @@ export default async function HomePage() {
           </dl>
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

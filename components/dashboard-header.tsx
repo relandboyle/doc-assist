@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -11,13 +12,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User, IdCard } from "lucide-react"
+import dynamic from "next/dynamic"
+const ApplicantInfoDialog = dynamic(() => import("./applicant-info-dialog"), { ssr: false })
 import Link from "next/link"
 import Image from "next/image"
 import { ThemeToggle } from "./theme-toggle"
 
 export function DashboardHeader() {
   const { data: session, status } = useSession()
+  const [isApplicantDialogOpen, setIsApplicantDialogOpen] = useState(false)
 
   const handleSignOut = () => {
     signOut({ callbackUrl: "/" })
@@ -86,9 +90,9 @@ export function DashboardHeader() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+              <DropdownMenuItem onClick={() => setIsApplicantDialogOpen(true)}>
+                <IdCard className="mr-2 h-4 w-4" />
+                <span>Applicant info…</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
@@ -97,6 +101,7 @@ export function DashboardHeader() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <ApplicantInfoDialog open={!!isApplicantDialogOpen} onOpenChange={setIsApplicantDialogOpen} />
         </div>
       </div>
     </header>

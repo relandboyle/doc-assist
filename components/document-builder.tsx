@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -8,15 +8,20 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { AnimatePresence, motion } from "framer-motion"
+import dynamic from "next/dynamic"
+import ApplicantInfoDialog, { readApplicantInfo as readApplicantInfoFromStore } from "@/components/applicant-info-dialog"
 import { useTemplateStore } from "@/lib/template-store"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Link as LinkIcon, Building2, FileText, Sparkles } from "lucide-react"
+import { Loader2, Link as LinkIcon, Building2, FileText, Sparkles, FileDown } from "lucide-react"
 
 interface ExtractedJobData {
   url: string
   company?: string
   title?: string
   description?: string
+  hiringTeam?: Array<{ name: string; title?: string }>
 }
 
 export function DocumentBuilder() {
@@ -34,6 +39,36 @@ export function DocumentBuilder() {
   const [libraryBullets, setLibraryBullets] = useState<string[]>([])
   const [genName, setGenName] = useState<string>("")
   const [isGeneratingDoc, setIsGeneratingDoc] = useState(false)
+  const [isCLDialogOpen, setIsCLDialogOpen] = useState(false)
+  const [isGeneratingCL, setIsGeneratingCL] = useState(false)
+  const [generatedCLId, setGeneratedCLId] = useState<string | null>(null)
+  const [resumeOptions, setResumeOptions] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedResumeId, setSelectedResumeId] = useState<string>("")
+  const [clName, setClName] = useState<string>("")
+  const [isLoadingResumes, setIsLoadingResumes] = useState(false)
+  const [isApplicantDialogOpen, setIsApplicantDialogOpen] = useState(false)
+  const [applicantOptedOut, setApplicantOptedOut] = useState(false)
+  const [applicantName, setApplicantName] = useState("")
+  const [applicantAddress, setApplicantAddress] = useState("")
+  const clAbortRef = useRef<AbortController | null>(null)
+  const [hiringPerson, setHiringPerson] = useState<{ name: string; title?: string } | null>(null)
+  const [addressTo, setAddressTo] = useState<'manager' | 'person'>('manager')
+  // Read applicant info from localStorage (client-side only)
+  const readApplicant = () => {
+    if (typeof window === 'undefined') return { name: '', address: '' }
+    try {
+      const raw = localStorage.getItem('doc-assist-applicant')
+      if (raw === null) return { name: '', address: '' }
+      const parsed = JSON.parse(raw)
+      if (parsed === null) {
+        return { name: '', address: '', optedOut: true } as any
+      }
+      const data = parsed || {}
+      return { name: String(data?.name || ''), address: String(data?.address || ''), optedOut: false } as any
+    } catch {
+      return { name: '', address: '' }
+    }
+  }
 
   // Ensure folder IDs are available when landing directly on Builder
   // Load from localStorage after mount to avoid state updates during render
@@ -77,10 +112,21 @@ export function DocumentBuilder() {
       }
       const data = (await resp.json()) as { job: ExtractedJobData }
       setJobData(data.job)
+      // Pick one hiring team member if present (random)
+      const ht = Array.isArray(data.job?.hiringTeam) ? data.job.hiringTeam : []
+      if (ht.length > 0) {
+        const pick = ht[Math.floor(Math.random() * ht.length)]
+        if (pick && pick.name) setHiringPerson({ name: pick.name, title: pick.title })
+      } else {
+        setHiringPerson(null)
+      }
+      setAddressTo('manager')
       // Volatile only: log for now
       // eslint-disable-next-line no-console
       console.log("Extracted job data:", data.job)
       toast({ title: "Job details extracted", description: "Parsed basic info from the post." })
+      // Automatically generate keywords after a successful extract
+      await generateKeywordsFor(data.job)
     } catch (err) {
       toast({ title: "Extraction failed", description: (err as Error).message, variant: "destructive" })
     } finally {
@@ -88,9 +134,9 @@ export function DocumentBuilder() {
     }
   }
 
-  const handleGenerateKeywords = async () => {
+  const generateKeywordsFor = async (job: ExtractedJobData) => {
     try {
-      if (!jobData?.description) {
+      if (!job?.description) {
         toast({
           title: "Extract job details first",
           description: "Use Extract to parse the job post, then try again.",
@@ -107,9 +153,9 @@ export function DocumentBuilder() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          company: jobData.company,
-          title: jobData.title,
-          description: jobData.description,
+          company: job.company,
+          title: job.title,
+          description: job.description,
           system,
         }),
       })
@@ -137,6 +183,18 @@ export function DocumentBuilder() {
     } finally {
       setIsKeywordsLoading(false)
     }
+  }
+
+  const handleGenerateKeywords = async () => {
+    if (!jobData) {
+      toast({
+        title: "Extract job details first",
+        description: "Use Extract to parse the job post, then try again.",
+        variant: "destructive",
+      })
+      return
+    }
+    await generateKeywordsFor(jobData)
   }
 
   const openGenerateDialog = async () => {
@@ -173,7 +231,7 @@ export function DocumentBuilder() {
     }
   }
 
-  const handleGenerateDocument = async () => {
+  const handleGenerateTargetedResume = async () => {
     try {
       if (!selectedTemplateId) {
         toast({ title: "Select a template", description: "Choose a resume template to generate from.", variant: "destructive" })
@@ -218,9 +276,88 @@ export function DocumentBuilder() {
       <Card className="border-border bg-card/50">
         <CardHeader>
           <CardTitle className="text-card-foreground">Document Builder</CardTitle>
-          <CardDescription>Build a targeted resume for a specific role or job opening.</CardDescription>
+          <CardDescription>Build a targeted resume or cover letter for a specific role or job opening.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <AnimatePresence initial={false}>
+            {keywords && keywords.length > 0 ? (
+              <motion.div
+                key="keywords-block"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="space-y-3"
+              >
+                <div className="flex flex-wrap gap-2">
+                  <Button variant='outline' onClick={openGenerateDialog} className="border-border">
+                    <Sparkles className="h-4 w-4 mr-2" /> Generate Targeted Resume
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        if (!jobData?.title || !jobData?.description) {
+                          toast({ title: 'Complete previous steps', description: 'Extract job data first.', variant: 'destructive' })
+                          return
+                        }
+                        // Ensure applicant info exists or opted-out before proceeding
+                        const applicant = readApplicant() as any
+                        setApplicantOptedOut(!!applicant?.optedOut)
+                        setApplicantName(applicant?.name || '')
+                        setApplicantAddress(applicant?.address || '')
+                        if (!applicant?.optedOut && (!applicant?.name || !applicant?.address)) {
+                          // Proceed to open the generate dialog; inline controls there will prompt to add or skip
+                        }
+                        if (!folders?.generatedResumeFolderId) {
+                          toast({ title: 'Select folders first', description: 'Use Folder Setup to configure your Drive folders.', variant: 'destructive' })
+                          return
+                        }
+                        setIsCLDialogOpen(true)
+                        setGeneratedCLId(null)
+                        setClName(`${jobData.title} - Targeted Cover Letter (${new Date().toLocaleDateString()})`)
+                        // load generated resumes for selection
+                        setIsLoadingResumes(true)
+                        try {
+                          const r = await fetch(`/api/templates?folderId=${folders.generatedResumeFolderId}&type=resume`)
+                          const d = await r.json().catch(() => ({ templates: [] }))
+                          const DOCS = 'application/vnd.google-apps.document'
+                          const mapped = Array.isArray(d.templates)
+                            ? d.templates
+                                .filter((t: any) => t?.mimeType === DOCS)
+                                .map((t: any) => ({ id: t.id, name: t.name }))
+                            : []
+                          setResumeOptions(mapped)
+                          if (mapped.length > 0) setSelectedResumeId(mapped[0].id)
+                          else setSelectedResumeId("")
+                        } finally {
+                          setIsLoadingResumes(false)
+                        }
+                      } catch {
+                        toast({ title: 'Could not load resumes', description: 'Try reloading the page.', variant: 'destructive' })
+                      }
+                    }}
+                    className="border-border"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" /> Generate Targeted Cover Letter
+                  </Button>
+                </div>
+                <Accordion type="single" collapsible className="rounded-md border border-border bg-background/50">
+                  <AccordionItem value="keywords">
+                    <AccordionTrigger className="px-3">Suggested Key Words</AccordionTrigger>
+                    <AccordionContent className="px-3">
+                      <div className="flex flex-wrap gap-2">
+                        {keywords.map((kw, idx) => (
+                          <Badge key={`${kw}-${idx}`} variant="secondary">{kw}</Badge>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
           <div className="space-y-2">
             <Label htmlFor="job-url" className="text-popover-foreground flex items-center gap-2">
               <LinkIcon className="h-4 w-4" /> Job posting URL
@@ -239,7 +376,9 @@ export function DocumentBuilder() {
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Extracting
                   </>
                 ) : (
-                  "Extract"
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" /> Extract
+                  </>
                 )}
               </Button>
             </div>
@@ -262,19 +401,6 @@ export function DocumentBuilder() {
           {jobData && (
             <>
               <div className="relative rounded-md border border-border p-4 bg-background/50">
-                <div className="absolute top-2 right-2">
-                  <Button onClick={handleGenerateKeywords} disabled={isKeywordsLoading} className="bg-primary text-primary-foreground">
-                    {isKeywordsLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Key Words
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" /> Key Words
-                      </>
-                    )}
-                  </Button>
-                </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <Building2 className="h-4 w-4" />
                   <span>{jobData.company || "Company (detected)"}</span>
@@ -283,23 +409,16 @@ export function DocumentBuilder() {
                   <FileText className="h-4 w-4" />
                   <span>{jobData.title || "Job Title (detected)"}</span>
                 </div>
+                {hiringPerson && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                    <span className="inline-block rounded-sm bg-accent px-1.5 py-0.5">Hiring team</span>
+                    <span>{hiringPerson.name}{hiringPerson.title ? ` — ${hiringPerson.title}` : ''}</span>
+                  </div>
+                )}
                 <div className="text-sm whitespace-pre-line">
                   {jobData.description || "Job description preview will appear here."}
                 </div>
               </div>
-              {keywords && keywords.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-sm text-muted-foreground">Suggested Key Words</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {keywords.map((kw, idx) => (
-                      <Badge key={`${kw}-${idx}`} variant="secondary">{kw}</Badge>
-                    ))}
-                  </div>
-                  <div>
-                    <Button onClick={openGenerateDialog} className="mt-2 bg-primary text-primary-foreground">Generate Document</Button>
-                  </div>
-                </div>
-              )}
             </>
           )}
         </CardContent>
@@ -341,7 +460,7 @@ export function DocumentBuilder() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsGenOpen(false)} className="border-border">Cancel</Button>
-            <Button onClick={handleGenerateDocument} disabled={isGenLoading || isGeneratingDoc || !selectedTemplateId} className="bg-primary text-primary-foreground">
+            <Button onClick={handleGenerateTargetedResume} disabled={isGenLoading || isGeneratingDoc || !selectedTemplateId} className="bg-primary text-primary-foreground">
               {isGeneratingDoc ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…
@@ -355,6 +474,237 @@ export function DocumentBuilder() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Cover Letter Dialog */}
+      <Dialog open={isCLDialogOpen} onOpenChange={(o) => { setIsCLDialogOpen(o); if (!o) {
+        // Abort in-flight cover letter generation when dialog closes
+        try { clAbortRef.current?.abort() } catch {}
+        setIsGeneratingCL(false)
+        setGeneratedCLId(null)
+      } }}>
+        <DialogContent className="sm:max-w-[580px] bg-popover border-border">
+          {!generatedCLId ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-popover-foreground">Generate Targeted Cover Letter</DialogTitle>
+                <DialogDescription>
+                  Choose a generated resume to ground the model. We’ll create a new cover letter in your Generated Cover Letter folder.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-popover-foreground">Resume (from Generated Resumes)</Label>
+                  <div className="text-xs text-muted-foreground">Only Google Docs resumes are supported for cover letter generation.</div>
+                  {isLoadingResumes ? (
+                    <div className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading resumes…
+                    </div>
+                  ) : resumeOptions.length === 0 ? (
+                    <div className="flex flex-col gap-3 rounded-md border border-border p-3 bg-background/50">
+                      <div className="text-sm text-muted-foreground">No generated Google Docs resumes found.</div>
+                      <div>
+                        <Button variant="outline" className="border-border" onClick={() => { setIsCLDialogOpen(false); setIsGenOpen(true); }}>
+                          <Sparkles className="h-4 w-4 mr-2" /> Generate a Targeted Resume
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Select value={selectedResumeId} onValueChange={setSelectedResumeId}>
+                      <SelectTrigger className="bg-input border-border">
+                        <SelectValue placeholder={'Select a resume'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {resumeOptions.map((r) => (
+                          <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-popover-foreground">Document Name</Label>
+                  <Input value={clName} onChange={(e) => setClName(e.target.value)} className="bg-input border-border" />
+                </div>
+
+
+                <div className="space-y-2">
+                  <Label className="text-popover-foreground">Address to</Label>
+                  <Select value={addressTo} onValueChange={(v: any) => setAddressTo(v)}>
+                    <SelectTrigger className="bg-input border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manager">Hiring Manager</SelectItem>
+                      {hiringPerson && (
+                        <SelectItem value="person">{hiringPerson.name}{hiringPerson.title ? ` — ${hiringPerson.title}` : ''}</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+
+
+                {(() => {
+                  const a: any = (typeof window !== 'undefined') ? readApplicant() : { name: '', address: '', optedOut: false }
+                  const optedOut = !!a?.optedOut
+                  const needsInfo = !optedOut && (!a?.name || !a?.address)
+                  if (!needsInfo && !optedOut) return null
+                  return (
+                    <div className="space-y-2 rounded-md border border-border p-3 bg-background/50">
+                      <div className="text-xs text-muted-foreground">
+                        {optedOut
+                          ? 'You chose to skip adding your name and address. They will be omitted from the cover letter.'
+                          : 'Your name and mailing address are missing. Add them to prepend to the cover letter, or choose to skip.'}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" className="border-border" onClick={() => setIsApplicantDialogOpen(true)}>Add applicant info</Button>
+                        {!optedOut && (
+                          <Button variant="outline" className="border-border" onClick={() => { localStorage.setItem('doc-assist-applicant', 'null'); setApplicantOptedOut(true) }}>Skip for now</Button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCLDialogOpen(false)} className="border-border">Cancel</Button>
+                <Button
+                  onClick={async () => {
+                    try {
+                      if (!selectedResumeId) {
+                        toast({ title: 'Select a resume', description: 'Pick a resume to ground the cover letter.', variant: 'destructive' })
+                        return
+                      }
+                      if (!folders?.generatedCoverLetterFolderId) {
+                        toast({ title: 'Select folders first', description: 'Use Folder Setup to configure your Drive folders.', variant: 'destructive' })
+                        return
+                      }
+                      // Setup abort controller for this generation run
+                      const controller = new AbortController()
+                      try { clAbortRef.current?.abort() } catch {}
+                      clAbortRef.current = controller
+                      setIsGeneratingCL(true)
+                      // Fetch resume text to include in payload for better grounding
+                      let resumeText = ''
+                      try {
+                        const r = await fetch(`/api/templates/${selectedResumeId}?debug=1`, { signal: controller.signal })
+                        const j = await r.json().catch(() => ({} as any))
+                        if (typeof j?.textPreview === 'string') resumeText = j.textPreview
+                      } catch {}
+                      const applicant = readApplicant() as any
+                      const applicantHeader = applicant?.optedOut ? '' : [applicant.name, applicant.address].filter(Boolean).join('\n')
+                      const resp = await fetch('/api/builder/cover-letter', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          resumeDocumentId: selectedResumeId,
+                          targetFolderId: folders.generatedCoverLetterFolderId || folders.coverLetterFolderId,
+                          company: jobData?.company,
+                          jobTitle: jobData?.title,
+                          jobDescription: jobData?.description,
+                          documentName: clName,
+                          resumeText,
+                          addressTo,
+                          hiringPersonName: addressTo === 'person' ? hiringPerson?.name : undefined,
+                        }),
+                        signal: controller.signal,
+                      })
+                      if (!resp.ok) {
+                        const err = await resp.json().catch(() => ({} as any))
+                        throw new Error(err?.error || 'Failed to generate cover letter')
+                      }
+                      const data = await resp.json()
+                      // Prepend applicant header client-side by updating the doc content directly
+                      try {
+                        if (data?.documentId && applicantHeader) {
+                          await fetch('/api/documents/prepend-header', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ documentId: data.documentId, headerText: applicantHeader }),
+                          })
+                        }
+                      } catch {}
+                      setGeneratedCLId(data.documentId)
+                      toast({ title: 'Cover letter generated', description: 'You can open it in Google Docs or download as PDF.' })
+                    } catch (e) {
+                      if ((e as any)?.name === 'AbortError') {
+                        // Silently ignore user-initiated cancel
+                      } else {
+                        toast({ title: 'Generation failed', description: (e as Error).message, variant: 'destructive' })
+                      }
+                    } finally {
+                      setIsGeneratingCL(false)
+                    }
+                  }}
+                  disabled={(() => {
+                    if (isGeneratingCL || !selectedResumeId || resumeOptions.length === 0) return true
+                    const a: any = (typeof window !== 'undefined') ? readApplicant() : { name: '', address: '', optedOut: false }
+                    const hasInfo = !!(a?.name && a?.address)
+                    const canGenerate = !!a?.optedOut || hasInfo
+                    return !canGenerate
+                  })()}
+                  className="bg-primary text-primary-foreground"
+                >
+                  {isGeneratingCL ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" /> Generate
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-popover-foreground">Cover Letter Ready</DialogTitle>
+                <DialogDescription>Your cover letter has been created. You can download it as a PDF.</DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex items-center justify-between gap-2">
+                {/* <Button variant="outline" onClick={() => setIsCLDialogOpen(false)} className="border-border">Close</Button> */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    className="border-border w-full sm:w-auto"
+                    onClick={() => {
+                      if (generatedCLId) {
+                        window.open(`https://docs.google.com/document/d/${generatedCLId}/edit`, '_blank', 'noopener,noreferrer')
+                      }
+                    }}
+                  >
+                    <FileText className="h-4 w-4 mr-2" /> Open in Google Docs
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-border w-full sm:w-auto"
+                    onClick={() => {
+                      // Link to Document History view
+                      window.location.href = "/dashboard/history"
+                    }}
+                  >
+                    View Document History
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const fileName = (clName || 'Cover Letter').replace(/\s+/g, ' ').trim()
+                      const url = `/api/export/pdf?documentId=${encodeURIComponent(generatedCLId || '')}&fileName=${encodeURIComponent(fileName)}`
+                      window.open(url, '_blank', 'noopener,noreferrer')
+                    }}
+                    className="bg-primary text-primary-foreground w-full sm:w-auto"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" /> PDF
+                  </Button>
+                </div>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      <ApplicantInfoDialog open={isApplicantDialogOpen} onOpenChange={setIsApplicantDialogOpen} />
     </div>
   )
 }

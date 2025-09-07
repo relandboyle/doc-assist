@@ -40,7 +40,7 @@ export default function RootLayout({
               defaultTheme="system"
               enableSystem
             >
-              <div className="min-h-screen flex flex-col transition-colors duration-300">
+              <div className="min-h-screen flex flex-col transition-colors duration-300 min-w-[780px]">
                 {children}
               </div>
             </ThemeProvider>

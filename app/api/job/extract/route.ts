@@ -100,7 +100,7 @@ function extractHostname(rawUrl: string): string | null {
   }
 }
 
-function extractLinkedIn(html: string): { title?: string; company?: string; description?: string } | null {
+function extractLinkedIn(html: string): { title?: string; company?: string; description?: string; hiringTeam?: Array<{ name: string; title?: string }> } | null {
   // Title selectors
   const titleMatch =
     html.match(/<h1[^>]+class=["'][^"']*(?:topcard__title|top-card-layout__title)[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i) ||
@@ -115,8 +115,36 @@ function extractLinkedIn(html: string): { title?: string; company?: string; desc
   const companyRaw = companyAnchor?.[1] || companySpan?.[1]
   const company = companyRaw ? stripHtml(companyRaw) : undefined
 
+  // Attempt to extract "Meet the hiring team" strictly from that section only (no fallbacks)
+  let hiringTeam: Array<{ name: string; title?: string }> | undefined
+  try {
+    // Find the heading element that contains the phrase
+    const headingMatch = html.match(/<h[1-6][^>]*>[^<]*meet\s+the\s+hiring\s+team[^<]*<\/h[1-6]>/i)
+    if (headingMatch && typeof headingMatch.index === 'number') {
+      const after = html.slice(headingMatch.index + headingMatch[0].length)
+      // Slice until the next heading or up to a max window
+      const nextHeadIdxRel = after.search(/<h[1-6][^>]*>/i)
+      const windowEnd = nextHeadIdxRel !== -1 ? nextHeadIdxRel : Math.min(after.length, 3000)
+      const sectionHtml = after.slice(0, windowEnd)
+      const text = stripHtml(sectionHtml) || ""
+      const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean)
+      const isLikelyName = (s: string) => /^[A-Z][a-z]+(?:\s+[A-Z][a-zA-Z’']+){1,3}$/.test(s)
+      const roleRx = /(Recruiter|Talent\s+Acquisition|Hiring\s+Manager|People\s+Partner|Human\s+Resources|HR\b|Manager|Director|Lead|Head\s+of|VP|Vice\s+President)/i
+      for (let i = 0; i < lines.length; i++) {
+        if (isLikelyName(lines[i])) {
+          let title: string | undefined
+          for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
+            if (roleRx.test(lines[j])) { title = lines[j]; break }
+          }
+          hiringTeam = [{ name: lines[i], title }]
+          break
+        }
+      }
+    }
+  } catch {}
+
   // Description handled elsewhere; return title/company hints
-  if (title || company) return { title, company }
+  if (title || company || hiringTeam) return { title, company, hiringTeam }
   return null
 }
 
@@ -183,7 +211,8 @@ export async function POST(req: NextRequest) {
     }
     description = stripHtml(description)
 
-    const job = { url, company, title, description }
+    const job: any = { url, company, title, description }
+    if (domainHints?.hiringTeam) job.hiringTeam = domainHints.hiringTeam
 
     return NextResponse.json({ job })
   } catch (e) {

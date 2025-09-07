@@ -107,30 +107,30 @@ export class GoogleDocsService {
     const doc = await docs.documents.get({ documentId })
     const endIndex = doc.data.body?.content?.[doc.data.body.content.length - 1]?.endIndex || 1
 
-    // Replace all content
-    await docs.documents.batchUpdate({
-      documentId,
-      requestBody: {
-        requests: [
-          {
-            deleteContentRange: {
-              range: {
-                startIndex: 1,
-                endIndex: endIndex - 1,
-              },
-            },
+    // Build requests: only delete existing content if there's something to delete
+    const requests: any[] = []
+    // Only delete when the computed range is non-empty.
+    // For brand-new docs, endIndex is often 1 or 2. Deleting 1..1 is invalid (empty range).
+    const deleteStart = 1
+    const deleteEnd = Math.max(1, (endIndex || 1) - 1)
+    if (deleteEnd > deleteStart) {
+      requests.push({
+        deleteContentRange: {
+          range: {
+            startIndex: deleteStart,
+            endIndex: deleteEnd,
           },
-          {
-            insertText: {
-              location: {
-                index: 1,
-              },
-              text: content,
-            },
-          },
-        ],
+        },
+      })
+    }
+    requests.push({
+      insertText: {
+        location: { index: 1 },
+        text: content,
       },
     })
+
+    await docs.documents.batchUpdate({ documentId, requestBody: { requests } })
   }
 
   // Generate document from template with variable substitution (preserves formatting)

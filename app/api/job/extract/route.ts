@@ -67,7 +67,7 @@ function splitCompanyAndTitle(raw: string): { title?: string; company?: string }
 function stripHtml(html: string | undefined): string | undefined {
   if (!html) return html
   return html
-    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<br\s*\/?>(?=\s*\n?)/gi, "\n")
     .replace(/<(?:p|div|li)[^>]*>/gi, (m) => (m.toLowerCase().startsWith('<li') ? '\n• ' : '\n'))
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ')
@@ -100,9 +100,9 @@ function extractHostname(rawUrl: string): string | null {
   }
 }
 
-async function extractLinkedInHiringTeamWithPlaywright(_url: string): Promise<Array<{ name: string; title?: string }> | null> { return null }
+async function extractLinkedInHiringTeamWithPlaywright(_url: string): Promise<null> { return null }
 
-function extractLinkedIn(html: string): { title?: string; company?: string; description?: string; hiringTeam?: Array<{ name: string; title?: string }> } | null {
+function extractLinkedIn(html: string): { title?: string; company?: string; description?: string } | null {
   // Title selectors
   const titleMatch =
     html.match(/<h1[^>]+class=["'][^"']*(?:topcard__title|top-card-layout__title)[^"']*["'][^>]*>([\s\S]*?)<\/h1>/i) ||
@@ -117,53 +117,9 @@ function extractLinkedIn(html: string): { title?: string; company?: string; desc
   const companyRaw = companyAnchor?.[1] || companySpan?.[1]
   const company = companyRaw ? stripHtml(companyRaw) : undefined
 
-  // Attempt to extract hiring team/person from the "Meet the hiring team" block
-  let hiringTeam: Array<{ name: string; title?: string }> | undefined
-  try {
-    // Prefer selecting the information block directly, then look for children
-    const infoBlock = html.match(/<[^>]*class=["'][^"']*hirer-card__hirer-information[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)
-
-    let extractedName: string | undefined
-    let extractedTitle: string | undefined
-
-    if (infoBlock) {
-      const inner = infoBlock[1] || ""
-      // Name via <strong> inside hirer-card__hirer-information
-      const strongMatch = inner.match(/<strong[^>]*>([\s\S]*?)<\/strong>/i)
-      if (strongMatch) {
-        const nameText = stripHtml(strongMatch[1]) || ""
-        const nameLines = nameText.split(/\n+/).map((l) => l.trim()).filter(Boolean)
-        extractedName = nameLines[0]
-      }
-      // Title via .text-body-small inside the same block; second non-empty line
-      const smallMatch = inner.match(/<[^>]*class=["'][^"']*text-body-small[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)
-      if (smallMatch) {
-        const tText = stripHtml(smallMatch[1]) || ""
-        const tLines = tText.split(/\n+/).map((l) => l.trim()).filter(Boolean)
-        if (tLines.length >= 2) extractedTitle = tLines[1]
-        else if (tLines.length === 1) extractedTitle = tLines[0]
-      }
-    }
-
-    // Secondary: .jobs-poster__name strong if name not found
-    if (!extractedName) {
-      const posterBlock = html.match(/<[^>]*class=["'][^"']*jobs-poster__name[^"']*["'][^>]*>([\s\S]*?)<\/[^>]+>/i)
-      if (posterBlock) {
-        const inner = posterBlock[1] || ""
-        const strongMatch = inner.match(/<strong[^>]*>([\s\S]*?)<\/strong>/i)
-        if (strongMatch) {
-          const nameText = stripHtml(strongMatch[1]) || ""
-          const nameLines = nameText.split(/\n+/).map((l) => l.trim()).filter(Boolean)
-          extractedName = nameLines[0]
-        }
-      }
-    }
-
-    if (extractedName) hiringTeam = [{ name: extractedName, title: extractedTitle }]
-  } catch {}
-
-  // Description handled elsewhere; return title/company and hiring team hints
-  if (title || company || hiringTeam) return { title, company, hiringTeam }
+  // Do not return hiring team hints anymore to avoid noisy data
+  // Description handled elsewhere; return title/company only
+  if (title || company) return { title, company }
   return null
 }
 
@@ -231,8 +187,6 @@ export async function POST(req: NextRequest) {
     description = stripHtml(description)
 
     const job: any = { url, company, title, description }
-    const hiringTeam: Array<{ name: string; title?: string }> | undefined = domainHints?.hiringTeam
-    if (host?.includes('linkedin')) job.hiringTeam = hiringTeam
 
     try {
       if (host?.includes('linkedin')) {

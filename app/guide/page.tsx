@@ -135,6 +135,27 @@ PROFESSIONAL_SUMMARY, DEGREE, TECHNICAL_SKILLS, PROJECT_NAME, etc.
             <p className="text-xs">Note: For .docx templates, you’ll be prompted to Delete, Archive, or Keep the original after conversion.</p>
           </CardContent>
         </Card>
+
+        <Card className="md:col-span-2 border-border bg-card">
+          <CardHeader>
+            <CardTitle className="text-card-foreground">Add the LinkedIn bookmarklet</CardTitle>
+            <CardDescription>One-click send a job’s URL (and hiring manager, when present) to the Builder.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <ol className="list-decimal pl-5 space-y-2">
+              <li>
+                Create a new bookmark in your browser. Name it for example “Doc Tailor – Builder”.
+              </li>
+              <li>
+                Paste this code as the bookmark’s URL (single line):
+                <pre className="whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-xs text-foreground overflow-x-auto">{`javascript:(function(){try{var APP_ORIGIN='https://doc-tailor';var pick=function(s,r){return (r||document).querySelector(s)};var name='';var title='';var poster=pick('.jobs-poster__name');if(poster){var strong=pick('strong',poster);if(strong&&strong.textContent){name=String(strong.textContent).trim()}}var info=pick('.hirer-card__hirer-information');if(info){var small=pick('.text-body-small',info);var raw=small&&small.textContent?String(small.textContent):'';var parts=raw.split('\\n');var line=parts.length>1?parts[1]:'';title=line?line.replace(/^\\s+/,''):''}var jobUrl=location.href;var params={jobUrl:jobUrl};if(name&&title){params.hiringName=name;params.hiringTitle=title}var qs=new URLSearchParams(params).toString();window.open(APP_ORIGIN+'/dashboard/builder?'+qs,'_blank')}catch(e){console.log('DocTailor bookmarklet error',e)}})();`}</pre>
+              </li>
+              <li>
+                On a LinkedIn job page, click the bookmark. If the page shows “Meet the hiring team”, the name and title are included; otherwise we send just the job URL.
+              </li>
+            </ol>
+          </CardContent>
+        </Card>
           </div>
         </div>
       </main>

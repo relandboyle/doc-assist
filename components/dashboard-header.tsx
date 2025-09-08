@@ -48,7 +48,7 @@ export function DashboardHeader() {
 
           <div className="flex items-center space-x-4">
             <Button variant="link" asChild>
-              <Link href="/guide/templates">Guide</Link>
+              <Link href="/guide">Guide</Link>
             </Button>
             <ThemeToggle />
           </div>
@@ -67,7 +67,7 @@ export function DashboardHeader() {
 
         <div className="flex items-center space-x-4">
           <Button variant="link" asChild>
-            <Link href="/guide/templates">Guide</Link>
+            <Link href="/guide">Guide</Link>
           </Button>
           <ThemeToggle />
 

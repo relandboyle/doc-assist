@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
       jobDescription,
       documentName,
       resumeText: resumeTextFromClient,
+      keywords,
+      addressTo,
+      hiringPersonName,
     } = body as {
       resumeDocumentId: string
       targetFolderId?: string
@@ -26,6 +29,9 @@ export async function POST(req: NextRequest) {
       jobDescription?: string
       documentName?: string
       resumeText?: string
+      keywords?: string[]
+      addressTo?: 'manager' | 'person'
+      hiringPersonName?: string
     }
 
     if (!resumeDocumentId || !jobTitle || !jobDescription) {
@@ -50,6 +56,14 @@ export async function POST(req: NextRequest) {
     const jd = (jobDescription || "").slice(0, MAX)
     const resume = (resumeText || "").slice(0, MAX)
 
+    const kw = Array.isArray(keywords) ? keywords.map(k => String(k).trim()).filter(Boolean).slice(0, 50) : []
+    const greetingInstruction = (() => {
+      if (addressTo === 'person' && typeof hiringPersonName === 'string' && hiringPersonName.trim()) {
+        return `Address the greeting to ${hiringPersonName.trim()}.`
+      }
+      return 'Address the greeting to "Hiring Manager".'
+    })()
+
     const prompt = [
       `Target Company: ${company || "(unspecified)"}`,
       `Target Job Title: ${jobTitle}`,
@@ -57,13 +71,16 @@ export async function POST(req: NextRequest) {
       "Job Description:",
       jd,
       "",
+      ...(kw.length ? ["Priority Keywords (must be reflected naturally in the letter):", ...kw.map(k => `- ${k}`), ""] : []),
+      greetingInstruction,
+      "",
       "Candidate Resume (verbatim text, authoritative source — do NOT invent content):",
       resume || "(resume text not available)",
       "",
       "Write a professional cover letter that:",
       "- Contains ONLY candidate-related statements that can be verified from the resume text; do not fabricate skills, titles, or achievements.",
       "- Do NOT copy content verbatim from the resume.",
-      "- Tailors tone and content to the target company and role, considering likely corporate goals and product context based publicly available information about the company.",
+      "- Tailors tone and content to the target company and role; align wording with the job description and integrate the provided keywords when appropriate and truthful.",
       "- Begin with today's date, then the company name, the address of company's headquarters mailing address (street, city, state, ZIP), then the greeting.",
       "- Use the candidate’s exact name from the resume in the signature line.",
       "- Write a final, ready-to-send letter. If a specific detail (e.g., hiring manager name) is unknown, use a neutral alternative such as 'Hiring Manager' or omit that line entirely.",
@@ -105,7 +122,7 @@ export async function POST(req: NextRequest) {
 
     const candidateName = extractCandidateName(resume) || ""
     const todayDate = formatToday()
-    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")
 
     // Replace common placeholders if model emitted any
     if (coverLetterContent) {

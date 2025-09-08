@@ -21,7 +21,6 @@ interface ExtractedJobData {
   company?: string
   title?: string
   description?: string
-  hiringTeam?: { name: string; title?: string }
 }
 
 export function DocumentBuilder() {
@@ -52,7 +51,9 @@ export function DocumentBuilder() {
   const [applicantAddress, setApplicantAddress] = useState("")
   const clAbortRef = useRef<AbortController | null>(null)
   const [hiringPerson, setHiringPerson] = useState<{ name: string; title?: string } | null>(null)
-  const [addressTo, setAddressTo] = useState<'manager' | 'person'>('manager')
+  const [hiringNameInput, setHiringNameInput] = useState<string>("")
+  const [hiringTitleInput, setHiringTitleInput] = useState<string>("")
+  const [addressTo, setAddressTo] = useState<'manager' | 'person'>(() => 'manager')
   // Read applicant info from localStorage (client-side only)
   const readApplicant = () => {
     if (typeof window === 'undefined') return { name: '', address: '' }
@@ -83,9 +84,12 @@ export function DocumentBuilder() {
       if (typeof window === 'undefined') return
       const sp = new URLSearchParams(window.location.search)
       const qUrl = sp.get('jobUrl') || sp.get('url') || ''
-      const qName = sp.get('hiringName') || sp.get('name') || ''
-      const qTitle = sp.get('hiringTitle') || sp.get('title') || ''
-      if (qName) setHiringPerson({ name: qName, title: qTitle || undefined })
+      const qName = sp.get('hiringName') || ''
+      const qTitle = sp.get('hiringTitle') || ''
+      if (qName && qTitle) {
+        setHiringPerson({ name: qName, title: qTitle })
+        setAddressTo('person')
+      }
       if (qUrl) {
         setJobUrl(qUrl)
         // Trigger extraction immediately using provided URL
@@ -132,12 +136,7 @@ export function DocumentBuilder() {
       const data = (await resp.json()) as { job: ExtractedJobData }
       setJobData(data.job)
       console.log({jobData})
-      // Pick one hiring team member if present (do not clear prefilled value when absent)
-      const ht = data.job?.hiringTeam
-      if (ht?.name) {
-        setHiringPerson({ name: ht.name, title: ht.title })
-      }
-      setAddressTo('manager')
+      // Do not change addressTo here; initial default is 'manager' and may already be set to 'person'
       // Volatile only: log for now
       // eslint-disable-next-line no-console
       console.log("Extracted job data:", data.job)
@@ -427,9 +426,9 @@ export function DocumentBuilder() {
                   <span>{jobData.title || "Job Title (detected)"}</span>
                 </div>
                 {hiringPerson && (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                    <span className="inline-block rounded-sm bg-accent px-1.5 py-0.5">Hiring team</span>
-                    <span>{hiringPerson.name}{hiringPerson.title ? ` — ${hiringPerson.title}` : ''}</span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 min-w-0">
+                    <span className="inline-block rounded-sm bg-accent px-1.5 py-0.5 shrink-0">Hiring manager</span>
+                    <span className="truncate">{hiringPerson.name}{hiringPerson.title ? ` — ${hiringPerson.title}` : ''}</span>
                   </div>
                 )}
                 <div className="text-sm whitespace-pre-line">
@@ -547,13 +546,15 @@ export function DocumentBuilder() {
                 <div className="space-y-2">
                   <Label className="text-popover-foreground">Address to</Label>
                   <Select value={addressTo} onValueChange={(v: any) => setAddressTo(v)}>
-                    <SelectTrigger className="bg-input border-border">
-                      <SelectValue />
+                    <SelectTrigger className="bg-input border-border max-w-full">
+                      <SelectValue className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="manager">Hiring Manager</SelectItem>
                       {hiringPerson && (
-                        <SelectItem value="person">{hiringPerson.name}{hiringPerson.title ? ` — ${hiringPerson.title}` : ''}</SelectItem>
+                        <SelectItem value="person">
+                          <span className="block max-w-[520px] truncate">{hiringPerson.name}</span>
+                        </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -582,6 +583,37 @@ export function DocumentBuilder() {
                     </div>
                   )
                 })()}
+                <div className="space-y-2">
+                  <Label className="text-popover-foreground">Or enter a specific person</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      value={hiringNameInput}
+                      onChange={(e) => setHiringNameInput(e.target.value)}
+                      placeholder="Full name"
+                      className="bg-input border-border"
+                    />
+                    <Input
+                      value={hiringTitleInput}
+                      onChange={(e) => setHiringTitleInput(e.target.value)}
+                      placeholder="Job title (optional)"
+                      className="bg-input border-border"
+                    />
+                  </div>
+                  <div>
+                    <Button
+                      variant="outline"
+                      className="border-border"
+                      onClick={() => {
+                        const nm = hiringNameInput.trim()
+                        if (!nm) return
+                        setHiringPerson({ name: nm, title: hiringTitleInput.trim() || undefined })
+                        setAddressTo('person')
+                      }}
+                    >
+                      Use this person
+                    </Button>
+                  </div>
+                </div>
               </div>
 
               <DialogFooter>
@@ -622,6 +654,7 @@ export function DocumentBuilder() {
                           jobDescription: jobData?.description,
                           documentName: clName,
                           resumeText,
+                          keywords: Array.isArray(keywords) ? keywords : [],
                           addressTo,
                           hiringPersonName: addressTo === 'person' ? hiringPerson?.name : undefined,
                         }),

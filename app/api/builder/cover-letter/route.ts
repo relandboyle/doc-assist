@@ -165,6 +165,27 @@ export async function POST(req: NextRequest) {
         .replace(/\n{3,}/g, "\n\n")
     }
 
+    // Ensure the letter begins with today's date
+    if (coverLetterContent) {
+      const lines = coverLetterContent.split(/\r?\n/)
+      // Find first non-empty line
+      let firstIdx = -1
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim()) { firstIdx = i; break }
+      }
+      const isDateLine = (s: string): boolean => {
+        const t = s.trim()
+        if (!t) return false
+        // Basic checks: contains month name or mm/dd/yyyy-like pattern
+        const monthNames = /(January|February|March|April|May|June|July|August|September|October|November|December)/i
+        const numericDate = /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/
+        return monthNames.test(t) || numericDate.test(t)
+      }
+      if (firstIdx === -1 || !isDateLine(lines[firstIdx])) {
+        coverLetterContent = [todayDate, "", coverLetterContent].join("\n").replace(/\n{3,}/g, "\n\n").trim()
+      }
+    }
+
     // Remove any verbatim copies of the first N lines of the resume header from the letter
     if (resume) {
       const headerLines = resume.split(/\r?\n/).slice(0, 10).map(l => l.trim()).filter(l => l.length >= 4 && l.length <= 120)

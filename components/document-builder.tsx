@@ -21,7 +21,7 @@ interface ExtractedJobData {
   company?: string
   title?: string
   description?: string
-  hiringTeam?: Array<{ name: string; title?: string }>
+  hiringTeam?: { name: string; title?: string }
 }
 
 export function DocumentBuilder() {
@@ -77,9 +77,28 @@ export function DocumentBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleExtract = async () => {
+  // Prefill from query params and auto-extract
+  useEffect(() => {
     try {
-      const trimmed = jobUrl.trim()
+      if (typeof window === 'undefined') return
+      const sp = new URLSearchParams(window.location.search)
+      const qUrl = sp.get('jobUrl') || sp.get('url') || ''
+      const qName = sp.get('hiringName') || sp.get('name') || ''
+      const qTitle = sp.get('hiringTitle') || sp.get('title') || ''
+      if (qName) setHiringPerson({ name: qName, title: qTitle || undefined })
+      if (qUrl) {
+        setJobUrl(qUrl)
+        // Trigger extraction immediately using provided URL
+        handleExtract(qUrl)
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleExtract = async (overrideUrl?: string) => {
+    try {
+      const srcUrl = typeof overrideUrl === 'string' ? overrideUrl : jobUrl
+      const trimmed = srcUrl.trim()
       if (!trimmed) {
         toast({
           title: "Enter a job post URL",
@@ -112,13 +131,11 @@ export function DocumentBuilder() {
       }
       const data = (await resp.json()) as { job: ExtractedJobData }
       setJobData(data.job)
-      // Pick one hiring team member if present (random)
-      const ht = Array.isArray(data.job?.hiringTeam) ? data.job.hiringTeam : []
-      if (ht.length > 0) {
-        const pick = ht[Math.floor(Math.random() * ht.length)]
-        if (pick && pick.name) setHiringPerson({ name: pick.name, title: pick.title })
-      } else {
-        setHiringPerson(null)
+      console.log({jobData})
+      // Pick one hiring team member if present (do not clear prefilled value when absent)
+      const ht = data.job?.hiringTeam
+      if (ht?.name) {
+        setHiringPerson({ name: ht.name, title: ht.title })
       }
       setAddressTo('manager')
       // Volatile only: log for now
@@ -370,7 +387,7 @@ export function DocumentBuilder() {
                 onChange={(e) => setJobUrl(e.target.value)}
                 className="bg-input border-border"
               />
-              <Button onClick={handleExtract} disabled={isLoading} className="bg-primary text-primary-foreground">
+              <Button onClick={() => handleExtract()} disabled={isLoading} className="bg-primary text-primary-foreground">
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Extracting

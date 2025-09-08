@@ -6,7 +6,9 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "seed:linkedin": "echo 'removed'",
+    "seed:linkedin:state": "echo 'removed'"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.11",

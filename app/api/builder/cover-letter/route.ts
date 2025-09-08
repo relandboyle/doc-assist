@@ -165,7 +165,7 @@ export async function POST(req: NextRequest) {
         .replace(/\n{3,}/g, "\n\n")
     }
 
-    // Ensure the letter begins with today's date
+    // Ensure the letter begins with today's date (overwrite any existing date line)
     if (coverLetterContent) {
       const lines = coverLetterContent.split(/\r?\n/)
       // Find first non-empty line
@@ -181,7 +181,12 @@ export async function POST(req: NextRequest) {
         const numericDate = /\b\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\b/
         return monthNames.test(t) || numericDate.test(t)
       }
-      if (firstIdx === -1 || !isDateLine(lines[firstIdx])) {
+      if (firstIdx === -1) {
+        coverLetterContent = [todayDate, "", coverLetterContent].join("\n").replace(/\n{3,}/g, "\n\n").trim()
+      } else if (isDateLine(lines[firstIdx])) {
+        lines[firstIdx] = todayDate
+        coverLetterContent = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()
+      } else {
         coverLetterContent = [todayDate, "", coverLetterContent].join("\n").replace(/\n{3,}/g, "\n\n").trim()
       }
     }

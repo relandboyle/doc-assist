@@ -13,9 +13,11 @@
     {
       "matches": [
         "https://www.linkedin.com/jobs/view/*",
-        "https://linkedin.com/jobs/view/*"
+        "https://linkedin.com/jobs/view/*",
+        "https://www.linkedin.com/jobs/search*",
+        "https://linkedin.com/jobs/search*"
       ],
-      "js": ["content.js"],
+      "js": ["utils.js", "ui.js", "job-handlers.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

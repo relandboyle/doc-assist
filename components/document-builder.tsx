@@ -14,7 +14,7 @@ import dynamic from "next/dynamic"
 import ApplicantInfoDialog, { readApplicantInfo as readApplicantInfoFromStore } from "@/components/applicant-info-dialog"
 import { useTemplateStore } from "@/lib/template-store"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Link as LinkIcon, Building2, FileText, Sparkles, FileDown } from "lucide-react"
+import { Loader2, Link as LinkIcon, Building2, FileText, Sparkles, FileDown, Pencil } from "lucide-react"
 
 interface ExtractedJobData {
   url: string
@@ -27,6 +27,7 @@ export function DocumentBuilder() {
   const { toast } = useToast()
   const { folders, initializeFromStorage } = useTemplateStore()
   const [jobUrl, setJobUrl] = useState("")
+  const [isJobUrlEditing, setIsJobUrlEditing] = useState(true) // Start in edit mode when no URL
   const [isLoading, setIsLoading] = useState(false)
   const [jobData, setJobData] = useState<ExtractedJobData | null>(null)
   const [isKeywordsLoading, setIsKeywordsLoading] = useState(false)
@@ -92,12 +93,15 @@ export function DocumentBuilder() {
       }
       if (qUrl) {
         setJobUrl(qUrl)
+        setIsJobUrlEditing(false) // Show as hyperlink when URL comes from query params
         // Trigger extraction immediately using provided URL
         handleExtract(qUrl)
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Note: Removed automatic exit from edit mode to allow users to see the hyperlink functionality
 
   const handleExtract = async (overrideUrl?: string) => {
     try {
@@ -110,6 +114,11 @@ export function DocumentBuilder() {
           variant: "destructive",
         })
         return
+      }
+
+      // Ensure the jobUrl state is set if we're using an override URL
+      if (overrideUrl && overrideUrl !== jobUrl) {
+        setJobUrl(overrideUrl)
       }
       try {
         // Validate URL shape
@@ -141,6 +150,10 @@ export function DocumentBuilder() {
       // eslint-disable-next-line no-console
       console.log("Extracted job data:", data.job)
       toast({ title: "Job details extracted", description: "Parsed basic info from the post." })
+
+      // Ensure we're not in edit mode after successful extraction
+      setIsJobUrlEditing(false)
+
       // Automatically generate keywords after a successful extract
       await generateKeywordsFor(data.job)
     } catch (err) {
@@ -379,14 +392,47 @@ export function DocumentBuilder() {
               <LinkIcon className="h-4 w-4" /> Job posting URL
             </Label>
             <div className="flex gap-2 items-center">
-              <Input
-                id="job-url"
-                placeholder="https://www.linkedin.com/jobs/view/..."
-                value={jobUrl}
-                onChange={(e) => setJobUrl(e.target.value)}
-                className="bg-input border-border"
-              />
-              <Button onClick={() => handleExtract()} disabled={isLoading} className="bg-primary text-primary-foreground">
+              {!isJobUrlEditing && jobUrl ? (
+                <div className="flex-1 flex items-center gap-2 h-10 px-3 py-2 border border-border rounded-md bg-input min-w-0">
+                  <a
+                    href={jobUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80 underline truncate text-sm min-w-0 flex-1"
+                    title={jobUrl}
+                  >
+                    {jobUrl}
+                  </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsJobUrlEditing(true)}
+                    className="h-6 w-6 p-0 hover:bg-muted flex-shrink-0"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <Input
+                  id="job-url"
+                  placeholder="https://www.linkedin.com/jobs/view/..."
+                  value={jobUrl}
+                  onChange={(e) => setJobUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setIsJobUrlEditing(false)
+                    }
+                  }}
+                  onBlur={() => {
+                    if (jobUrl.trim()) {
+                      setIsJobUrlEditing(false)
+                    }
+                  }}
+                  className="bg-input border-border flex-1"
+                  autoFocus
+                />
+              )}
+              <Button onClick={() => handleExtract()} disabled={isLoading} className="bg-primary text-primary-foreground flex-shrink-0">
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Extracting

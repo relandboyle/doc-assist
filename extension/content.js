@@ -12,6 +12,8 @@ function setup() {
   if (window.DocTailorUtils.isJobViewPage() || window.DocTailorUtils.isJobSearchPage()) {
     console.log('Doc Tailor: Setting up FAB');
     window.DocTailorUI.setupFAB();
+
+    // Note: Auto-trigger functionality removed - now using systematic tab opening approach
   } else {
     console.log('Doc Tailor: Not setting up FAB - not on supported page');
   }

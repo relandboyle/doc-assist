@@ -282,19 +282,29 @@ async function scrollToLoadAllJobs() {
     let stableCount = 0;
     const maxStableChecks = 3;
     let scrollAttempts = 0;
-    const maxScrollAttempts = 20;
+    const maxScrollAttempts = 30; // Increased for up/down scrolling
+    let scrollDirection = 'up'; // Start by scrolling up
+    let upScrollComplete = false;
 
     const scrollInterval = setInterval(() => {
       scrollAttempts++;
       const currentHeight = resultsContainer.scrollHeight;
 
-      console.log(`Scroll attempt ${scrollAttempts}: height ${currentHeight}, lastHeight ${lastHeight}`);
+      console.log(`Scroll attempt ${scrollAttempts}: height ${currentHeight}, lastHeight ${lastHeight}, direction: ${scrollDirection}`);
 
       if (currentHeight === lastHeight) {
         stableCount++;
         console.log(`Height stable for ${stableCount} checks`);
-        if (stableCount >= maxStableChecks) {
-          console.log('Scrolling complete - height stable');
+
+        // If we're scrolling up and height is stable, switch to down scrolling
+        if (scrollDirection === 'up' && !upScrollComplete) {
+          console.log('Up scrolling complete, switching to down scrolling');
+          scrollDirection = 'down';
+          upScrollComplete = true;
+          stableCount = 0; // Reset stable count for down scrolling
+          lastHeight = currentHeight; // Update last height
+        } else if (scrollDirection === 'down' && stableCount >= maxStableChecks) {
+          console.log('Down scrolling complete - height stable');
           clearInterval(scrollInterval);
           resolve();
           return;
@@ -305,12 +315,18 @@ async function scrollToLoadAllJobs() {
         console.log('Height changed, continuing to scroll');
       }
 
-      // Try multiple scroll methods
-      resultsContainer.scrollTop = resultsContainer.scrollHeight;
-      resultsContainer.scrollTo(0, resultsContainer.scrollHeight);
-
-      // Also try scrolling the window
-      window.scrollTo(0, document.body.scrollHeight);
+      // Scroll based on direction
+      if (scrollDirection === 'up') {
+        // Scroll to top
+        resultsContainer.scrollTop = 0;
+        resultsContainer.scrollTo(0, 0);
+        window.scrollTo(0, 0);
+      } else {
+        // Scroll to bottom
+        resultsContainer.scrollTop = resultsContainer.scrollHeight;
+        resultsContainer.scrollTo(0, resultsContainer.scrollHeight);
+        window.scrollTo(0, document.body.scrollHeight);
+      }
 
       if (scrollAttempts >= maxScrollAttempts) {
         console.log('Max scroll attempts reached');
@@ -336,18 +352,29 @@ async function scrollWindowToLoadJobs() {
     let stableCount = 0;
     const maxStableChecks = 3;
     let scrollAttempts = 0;
-    const maxScrollAttempts = 20;
+    const maxScrollAttempts = 30; // Increased for up/down scrolling
+    let scrollDirection = 'up'; // Start by scrolling up
+    let upScrollComplete = false;
 
     const scrollInterval = setInterval(() => {
       scrollAttempts++;
       const currentHeight = document.body.scrollHeight;
 
-      console.log(`Window scroll attempt ${scrollAttempts}: height ${currentHeight}`);
+      console.log(`Window scroll attempt ${scrollAttempts}: height ${currentHeight}, direction: ${scrollDirection}`);
 
       if (currentHeight === lastHeight) {
         stableCount++;
-        if (stableCount >= maxStableChecks) {
-          console.log('Window scrolling complete');
+        console.log(`Window height stable for ${stableCount} checks`);
+
+        // If we're scrolling up and height is stable, switch to down scrolling
+        if (scrollDirection === 'up' && !upScrollComplete) {
+          console.log('Window up scrolling complete, switching to down scrolling');
+          scrollDirection = 'down';
+          upScrollComplete = true;
+          stableCount = 0; // Reset stable count for down scrolling
+          lastHeight = currentHeight; // Update last height
+        } else if (scrollDirection === 'down' && stableCount >= maxStableChecks) {
+          console.log('Window down scrolling complete');
           clearInterval(scrollInterval);
           resolve();
           return;
@@ -355,10 +382,17 @@ async function scrollWindowToLoadJobs() {
       } else {
         stableCount = 0;
         lastHeight = currentHeight;
+        console.log('Window height changed, continuing to scroll');
       }
 
-      // Scroll window to bottom
-      window.scrollTo(0, document.body.scrollHeight);
+      // Scroll based on direction
+      if (scrollDirection === 'up') {
+        // Scroll window to top
+        window.scrollTo(0, 0);
+      } else {
+        // Scroll window to bottom
+        window.scrollTo(0, document.body.scrollHeight);
+      }
 
       if (scrollAttempts >= maxScrollAttempts) {
         console.log('Max window scroll attempts reached');
@@ -376,8 +410,315 @@ async function scrollWindowToLoadJobs() {
   });
 }
 
+async function openAllJobsInDocTailor() {
+  console.log('Starting openAllJobsInDocTailor function...');
+  console.log('Function called from:', new Error().stack);
+
+  // First, scroll to the bottom to load all lazy-loaded job links
+  console.log('Step 1: Scrolling to load all jobs...');
+  console.log('Page height before scrolling:', document.body.scrollHeight);
+  await scrollToLoadAllJobs();
+  console.log('Page height after scrolling:', document.body.scrollHeight);
+
+  // Wait a bit for any final lazy loading to complete
+  console.log('Step 2: Waiting for final lazy loading...');
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // Find all job links
+  console.log('Step 3: Finding job links...');
+  let jobLinks = document.querySelectorAll('a.job-card-container__link');
+  console.log(`Found ${jobLinks.length} job links with selector 'a.job-card-container__link'`);
+
+  // Debug: Log all links on the page to see what's available
+  const allLinks = document.querySelectorAll('a');
+  console.log(`Total links on page: ${allLinks.length}`);
+
+  // Log some sample links to see their structure
+  const sampleLinks = Array.from(allLinks).slice(0, 10);
+  sampleLinks.forEach((link, index) => {
+    console.log(`Link ${index + 1}: href="${link.href}", class="${link.className}"`);
+  });
+
+  // Try alternative selectors if the main one doesn't work
+  if (jobLinks.length === 0) {
+    console.log('Trying alternative selectors...');
+    const alternativeSelectors = [
+      'a[data-job-id]',
+      '.job-card-container a',
+      '.jobs-search-results__list-item a',
+      'a[href*="/jobs/view/"]',
+      '.job-card-list__title a',
+      'a[href*="/jobs/view"]',
+      '.job-card-list a',
+      '.jobs-search-results a'
+    ];
+
+    for (const selector of alternativeSelectors) {
+      const altLinks = document.querySelectorAll(selector);
+      console.log(`Selector '${selector}' found ${altLinks.length} links`);
+      if (altLinks.length > 0) {
+        jobLinks = altLinks;
+        break;
+      }
+    }
+  }
+
+  if (jobLinks.length === 0) {
+    console.log('No job links found with any selector');
+    showDocTailorOpeningSummary(0, 0, 20);
+    return;
+  }
+
+  // LinkedIn typically limits to around 20 tabs, so we'll respect that limit
+  const maxTabs = 20;
+  const linksToOpen = Array.from(jobLinks).slice(0, maxTabs);
+
+  console.log(`Step 4: Opening ${linksToOpen.length} of ${jobLinks.length} jobs in Doc-Tailor...`);
+
+  // Show user feedback about the operation
+  console.log(`Note: LinkedIn limits tab opening to ${maxTabs} tabs. ${jobLinks.length - maxTabs} additional jobs were not opened.`);
+
+  // Show modal summary immediately
+  showDocTailorOpeningSummary(jobLinks.length, linksToOpen.length, maxTabs);
+
+  // Step 1: Open all LinkedIn tabs first (without auto-trigger)
+  console.log('Step 1: Opening all LinkedIn tabs...');
+  linksToOpen.forEach((link, index) => {
+    const href = link.getAttribute('href');
+    if (href) {
+      console.log(`Opening LinkedIn job ${index + 1}/${linksToOpen.length}: ${href}`);
+
+      // Ensure the URL is absolute
+      const absoluteUrl = href.startsWith('http') ? href : `https://www.linkedin.com${href}`;
+
+      // Add only the tabIndex parameter (no auto-trigger yet)
+      const urlWithParams = absoluteUrl + (absoluteUrl.includes('?') ? '&' : '?') +
+        `tabIndex=${index + 1}`;
+
+      // Open the job in a new tab
+      const newTab = window.open(urlWithParams, `linkedin-job-${index + 1}`, 'noopener');
+
+      if (newTab) {
+        console.log(`LinkedIn job tab ${index + 1} opened successfully`);
+      } else {
+        console.error(`Failed to open LinkedIn job tab ${index + 1}`);
+      }
+    }
+  });
+
+  // Step 2: Wait for LinkedIn tabs to open, then systematically open and position Doc-Tailor tabs
+  console.log('Step 2: Waiting for LinkedIn tabs to open, then opening Doc-Tailor tabs...');
+  setTimeout(() => {
+    openDocTailorTabsSequentially(linksToOpen);
+  }, 2000); // Wait 2 seconds for LinkedIn tabs to open
+}
+
+async function openDocTailorTabsSequentially(linksToOpen) {
+  console.log('Starting sequential Doc-Tailor tab opening and positioning...');
+
+  for (let index = 0; index < linksToOpen.length; index++) {
+    const link = linksToOpen[index];
+    const href = link.getAttribute('href');
+
+    if (href) {
+      console.log(`Processing job ${index + 1}/${linksToOpen.length}: ${href}`);
+
+      // Ensure the URL is absolute
+      const absoluteUrl = href.startsWith('http') ? href : `https://www.linkedin.com${href}`;
+
+      try {
+        // Step 1: Open Doc-Tailor tab normally (it will appear at the end)
+        console.log(`Step 1: Opening Doc-Tailor tab for job ${index + 1}`);
+        const docTailorUrl = await getDocTailorUrl(absoluteUrl);
+        const docTailorTab = await chrome.runtime.sendMessage({
+          action: 'createDocTailorTabAtEnd',
+          url: docTailorUrl,
+          tabIndex: index + 1
+        });
+
+        if (docTailorTab.success) {
+          console.log(`Step 2: Doc-Tailor tab opened, now positioning after LinkedIn tab ${index + 1}`);
+
+          // Step 2: Move the Doc-Tailor tab to the correct position
+          const moveResult = await chrome.runtime.sendMessage({
+            action: 'moveDocTailorTab',
+            docTailorTabId: docTailorTab.tabId,
+            linkedInTabIndex: index + 1
+          });
+
+          if (moveResult.success) {
+            console.log(`Job ${index + 1} Doc-Tailor tab positioned successfully`);
+          } else {
+            console.error(`Failed to position Doc-Tailor tab for job ${index + 1}: ${moveResult.error}`);
+          }
+        } else {
+          console.error(`Failed to open Doc-Tailor tab for job ${index + 1}: ${docTailorTab.error}`);
+        }
+      } catch (error) {
+        console.error(`Error processing job ${index + 1}:`, error);
+      }
+
+      // Wait a bit between each job to avoid overwhelming the browser
+      if (index < linksToOpen.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  }
+
+  console.log('All Doc-Tailor tabs processed');
+}
+
+async function getDocTailorUrl(jobUrl) {
+  const appOrigin = await window.DocTailorUtils.getAppOrigin();
+
+  // Pass the job URL directly - Doc-Tailor will extract the job context from the URL
+  const params = {
+    jobUrl: jobUrl
+  };
+
+  const qs = new URLSearchParams(params).toString();
+  return appOrigin.replace(/\/+$/, '') + '/dashboard/builder?' + qs;
+}
+
+function showDocTailorOpeningSummary(totalJobs, openedJobs, maxTabs) {
+  // Create modal overlay
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10004;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+
+  // Create modal content
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    position: relative;
+  `;
+
+  // Create close button
+  const closeButton = document.createElement('button');
+  closeButton.innerHTML = '×';
+  closeButton.style.cssText = `
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+  `;
+
+  closeButton.addEventListener('mouseenter', () => {
+    closeButton.style.backgroundColor = '#f0f0f0';
+  });
+
+  closeButton.addEventListener('mouseleave', () => {
+    closeButton.style.backgroundColor = 'transparent';
+  });
+
+  // Create modal content
+  const title = document.createElement('h3');
+  title.textContent = 'Doc-Tailor Import Summary';
+  title.style.cssText = `
+    margin: 0 0 16px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #1a1a1a;
+  `;
+
+  const summary = document.createElement('div');
+  summary.style.cssText = `
+    margin-bottom: 20px;
+    line-height: 1.6;
+    color: #333;
+  `;
+
+  if (totalJobs > maxTabs) {
+    summary.innerHTML = `
+      <p><strong>Found ${totalJobs} job postings</strong> in the search results.</p>
+      <p><strong>Opening ${openedJobs} jobs in Doc-Tailor</strong> for processing.</p>
+      <p style="color: #f59e0b; font-weight: 500;">⚠️ LinkedIn limits tab opening to ${maxTabs} tabs at once.</p>
+      <p style="color: #666; font-size: 14px;">${totalJobs - openedJobs} additional jobs were not opened due to this limitation.</p>
+    `;
+  } else {
+    summary.innerHTML = `
+      <p><strong>Found ${totalJobs} job postings</strong> in the search results.</p>
+      <p><strong>Successfully opening all ${openedJobs} jobs in Doc-Tailor</strong> for processing.</p>
+    `;
+  }
+
+  const tips = document.createElement('div');
+  tips.style.cssText = `
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+    border-left: 4px solid #0a66c2;
+  `;
+
+  tips.innerHTML = `
+    <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #0a66c2;">💡 Doc-Tailor Tips:</h4>
+    <ul style="margin: 0; padding-left: 16px; font-size: 14px; color: #666;">
+      <li>Each job will open in a new tab and automatically load in Doc-Tailor</li>
+      <li>Use Doc-Tailor's Document Builder to create tailored applications</li>
+      <li>Close some tabs and try again to process more jobs</li>
+    </ul>
+  `;
+
+  const closeModal = () => {
+    if (overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+  };
+
+  closeButton.addEventListener('click', closeModal);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeModal();
+    }
+  });
+
+  // Add escape key listener
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+
+  modal.appendChild(closeButton);
+  modal.appendChild(title);
+  modal.appendChild(summary);
+  modal.appendChild(tips);
+  overlay.appendChild(modal);
+
+  document.body.appendChild(overlay);
+}
+
 // Export functions for use in other modules
 window.DocTailorJobHandlers = {
   openAllJobLinks,
+  openAllJobsInDocTailor,
   scrollToLoadAllJobs
 };

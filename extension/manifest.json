@@ -8,7 +8,10 @@
     "48": "icon.png",
     "128": "icon.png"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs", "scripting"],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [

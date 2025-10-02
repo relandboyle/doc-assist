@@ -90,12 +90,37 @@ async function loadSavedPosition() {
   });
 }
 
-async function openDocTailor() {
+async function openDocTailor(tabIndex = null) {
   const appOrigin = await getAppOrigin();
   const params = extractJobContext();
   const qs = new URLSearchParams(params).toString();
   const url = appOrigin.replace(/\/+$/, '') + '/dashboard/builder?' + qs;
-  window.open(url, '_blank', 'noopener');
+
+  if (tabIndex) {
+    console.log(`Opening Doc-Tailor for job ${tabIndex} and positioning after LinkedIn tab`);
+
+    try {
+      // Send message to background script to create the tab at the correct position
+      const response = await chrome.runtime.sendMessage({
+        action: 'createDocTailorTab',
+        url: url,
+        tabIndex: tabIndex
+      });
+
+      if (response.success) {
+        console.log(`Doc-Tailor tab created at correct position for job ${tabIndex}`);
+      } else {
+        console.log(`Failed to position Doc-Tailor tab: ${response.error}, opening normally`);
+        window.open(url, '_blank', 'noopener');
+      }
+    } catch (error) {
+      console.error('Error communicating with background script:', error);
+      // Fallback: just use the original method
+      window.open(url, '_blank', 'noopener');
+    }
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
 }
 
 // Export functions for use in other modules

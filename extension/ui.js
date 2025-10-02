@@ -185,6 +185,58 @@ function createFlyout() {
       }
       hideFlyout();
     });
+
+    // Add "Open All in Doc-Tailor" menu item
+    const openAllInDocTailorMenuItem = document.createElement('button');
+    openAllInDocTailorMenuItem.style.cssText = `
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      background: none;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: oklch(0.2 0.01 195);
+      transition: background-color 0.1s ease;
+    `;
+
+    openAllInDocTailorMenuItem.addEventListener('mouseenter', () => {
+      openAllInDocTailorMenuItem.style.backgroundColor = 'oklch(0.95 0.01 195)';
+    });
+
+    openAllInDocTailorMenuItem.addEventListener('mouseleave', () => {
+      openAllInDocTailorMenuItem.style.backgroundColor = 'transparent';
+    });
+
+    // Doc Tailor icon for "Open All in Doc-Tailor"
+    const docTailorIcon = document.createElementNS(svgNS, 'svg');
+    docTailorIcon.setAttribute('viewBox', '0 0 24 24');
+    docTailorIcon.setAttribute('width', '16');
+    docTailorIcon.setAttribute('height', '16');
+    docTailorIcon.setAttribute('aria-hidden', 'true');
+    docTailorIcon.style.fill = 'oklch(0.2 0.01 195)';
+
+    const docTailorPath = document.createElementNS(svgNS, 'path');
+    docTailorPath.setAttribute('d', 'M14 3h7v7h-2V7.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z M5 5h6v2H7v10h10v-4h2v6H5V5z');
+    docTailorIcon.appendChild(docTailorPath);
+
+    const openAllInDocTailorLabel = document.createElement('span');
+    openAllInDocTailorLabel.textContent = 'Open All in Doc-Tailor';
+
+    openAllInDocTailorMenuItem.appendChild(docTailorIcon);
+    openAllInDocTailorMenuItem.appendChild(openAllInDocTailorLabel);
+    flyout.appendChild(openAllInDocTailorMenuItem);
+
+    // Add click handler for "Open All in Doc-Tailor"
+    openAllInDocTailorMenuItem.addEventListener('click', () => {
+      if (window.DocTailorJobHandlers && window.DocTailorJobHandlers.openAllJobsInDocTailor) {
+        window.DocTailorJobHandlers.openAllJobsInDocTailor();
+      }
+      hideFlyout();
+    });
   }
 
   // Only add divider if we have menu items
@@ -573,7 +625,9 @@ async function setupFAB() {
   fab.addEventListener('click', async (e) => {
     e.stopPropagation();
     if (!window.DocTailorUtils.isJobSearchPage()) {
-      await window.DocTailorUtils.openDocTailor();
+      // Get the tab index from the FAB's data attribute
+      const tabIndex = fab.getAttribute('data-tab-index');
+      await window.DocTailorUtils.openDocTailor(tabIndex);
     }
     // On job search pages, do nothing (FAB click is disabled)
   });

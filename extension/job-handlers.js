@@ -2,17 +2,46 @@
 // Handles job search functionality and opening job links
 
 async function openAllJobLinks() {
+  console.log('Starting openAllJobLinks function...');
+
   // First, scroll to the bottom to load all lazy-loaded job links
+  console.log('Step 1: Scrolling to load all jobs...');
   await scrollToLoadAllJobs();
 
   // Wait a bit for any final lazy loading to complete
+  console.log('Step 2: Waiting for final lazy loading...');
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Find all job links
-  const jobLinks = document.querySelectorAll('a.job-card-container__link');
+  console.log('Step 3: Finding job links...');
+  let jobLinks = document.querySelectorAll('a.job-card-container__link');
+  console.log(`Found ${jobLinks.length} job links with selector 'a.job-card-container__link'`);
+
+  // Try alternative selectors if the main one doesn't work
+  if (jobLinks.length === 0) {
+    console.log('Trying alternative selectors...');
+    const alternativeSelectors = [
+      'a[data-job-id]',
+      '.job-card-container a',
+      '.jobs-search-results__list-item a',
+      'a[href*="/jobs/view/"]',
+      '.job-card-list__title a'
+    ];
+
+    for (const selector of alternativeSelectors) {
+      const altLinks = document.querySelectorAll(selector);
+      console.log(`Selector '${selector}' found ${altLinks.length} links`);
+      if (altLinks.length > 0) {
+        // Use the first alternative selector that finds links
+        jobLinks = altLinks;
+        break;
+      }
+    }
+  }
 
   if (jobLinks.length === 0) {
-    console.log('No job links found');
+    console.log('No job links found with any selector');
+    showJobOpeningSummary(0, 0, 20);
     return;
   }
 
@@ -20,7 +49,7 @@ async function openAllJobLinks() {
   const maxTabs = 20;
   const linksToOpen = Array.from(jobLinks).slice(0, maxTabs);
 
-  console.log(`Found ${jobLinks.length} job links, opening first ${linksToOpen.length} (LinkedIn tab limit: ${maxTabs})...`);
+  console.log(`Step 4: Opening ${linksToOpen.length} of ${jobLinks.length} job links...`);
 
   // Show user feedback about the operation
   console.log(`Note: LinkedIn limits tab opening to ${maxTabs} tabs. ${jobLinks.length - maxTabs} additional jobs were not opened.`);
@@ -33,6 +62,7 @@ async function openAllJobLinks() {
     // Add a 300ms delay between each click to avoid overwhelming the browser
     setTimeout(() => {
       const href = link.getAttribute('href');
+      console.log(`Opening job ${index + 1}: ${href}`);
       if (href) {
         // Ensure the URL is absolute
         const absoluteUrl = href.startsWith('http') ? href : `https://www.linkedin.com${href}`;
@@ -188,23 +218,136 @@ function showJobOpeningSummary(totalJobs, openedJobs, maxTabs) {
 
 async function scrollToLoadAllJobs() {
   return new Promise((resolve) => {
-    const resultsContainer = document.querySelector('.scaffold-layout__list');
+    console.log('Starting scroll to load all jobs...');
+
+    // Try multiple selectors to find the results container
+    const possibleSelectors = [
+      '.scaffold-layout__list',
+      '.jobs-search-results-list',
+      '.jobs-search-results',
+      '[data-test-id="search-results"]',
+      '.jobs-search-results-list__list',
+      '.scaffold-layout__content',
+      'main[role="main"]'
+    ];
+
+    let resultsContainer = null;
+    for (const selector of possibleSelectors) {
+      const container = document.querySelector(selector);
+      if (container) {
+        console.log(`Found container with selector: ${selector}`);
+
+        // For scaffold-layout__list, get the first direct child div (not nested)
+        if (selector === '.scaffold-layout__list') {
+          // Get all direct child divs and find the one that's not a header
+          const directChildren = Array.from(container.children).filter(child => child.tagName === 'DIV');
+          console.log(`Found ${directChildren.length} direct child divs`);
+
+          // Look for the first div that's not a header or contains job results
+          let targetDiv = null;
+          for (const child of directChildren) {
+            console.log(`Checking child div: ${child.className || 'no class'}`);
+            // Skip header elements and look for the main content area
+            if (!child.classList.contains('scaffold-layout__header') &&
+                !child.querySelector('header') &&
+                child.children.length > 0) {
+              targetDiv = child;
+              console.log(`Selected child div with class: ${child.className || 'no class'}`);
+              break;
+            }
+          }
+
+          if (targetDiv) {
+            resultsContainer = targetDiv;
+            console.log('Using selected child div of scaffold-layout__list for scrolling');
+          } else {
+            resultsContainer = container;
+            console.log('No suitable child div found, using scaffold-layout__list directly');
+          }
+        } else {
+          resultsContainer = container;
+        }
+        break;
+      }
+    }
+
     if (!resultsContainer) {
-      console.log('Results container not found');
-      resolve();
+      console.log('No results container found, trying window scroll');
+      // Fallback to window scrolling
+      scrollWindowToLoadJobs().then(resolve);
       return;
     }
 
     let lastHeight = 0;
     let stableCount = 0;
-    const maxStableChecks = 3; // Stop after 3 consecutive stable checks
+    const maxStableChecks = 3;
+    let scrollAttempts = 0;
+    const maxScrollAttempts = 20;
 
     const scrollInterval = setInterval(() => {
+      scrollAttempts++;
       const currentHeight = resultsContainer.scrollHeight;
+
+      console.log(`Scroll attempt ${scrollAttempts}: height ${currentHeight}, lastHeight ${lastHeight}`);
+
+      if (currentHeight === lastHeight) {
+        stableCount++;
+        console.log(`Height stable for ${stableCount} checks`);
+        if (stableCount >= maxStableChecks) {
+          console.log('Scrolling complete - height stable');
+          clearInterval(scrollInterval);
+          resolve();
+          return;
+        }
+      } else {
+        stableCount = 0;
+        lastHeight = currentHeight;
+        console.log('Height changed, continuing to scroll');
+      }
+
+      // Try multiple scroll methods
+      resultsContainer.scrollTop = resultsContainer.scrollHeight;
+      resultsContainer.scrollTo(0, resultsContainer.scrollHeight);
+
+      // Also try scrolling the window
+      window.scrollTo(0, document.body.scrollHeight);
+
+      if (scrollAttempts >= maxScrollAttempts) {
+        console.log('Max scroll attempts reached');
+        clearInterval(scrollInterval);
+        resolve();
+        return;
+      }
+    }, 300); // Faster scrolling
+
+    // Fallback timeout
+    setTimeout(() => {
+      console.log('Scroll timeout reached');
+      clearInterval(scrollInterval);
+      resolve();
+    }, 8000);
+  });
+}
+
+async function scrollWindowToLoadJobs() {
+  return new Promise((resolve) => {
+    console.log('Using window scroll fallback');
+    let lastHeight = 0;
+    let stableCount = 0;
+    const maxStableChecks = 3;
+    let scrollAttempts = 0;
+    const maxScrollAttempts = 20;
+
+    const scrollInterval = setInterval(() => {
+      scrollAttempts++;
+      const currentHeight = document.body.scrollHeight;
+
+      console.log(`Window scroll attempt ${scrollAttempts}: height ${currentHeight}`);
 
       if (currentHeight === lastHeight) {
         stableCount++;
         if (stableCount >= maxStableChecks) {
+          console.log('Window scrolling complete');
           clearInterval(scrollInterval);
           resolve();
           return;
@@ -214,15 +357,22 @@ async function scrollToLoadAllJobs() {
         lastHeight = currentHeight;
       }
 
-      // Scroll to bottom
-      resultsContainer.scrollTop = resultsContainer.scrollHeight;
-    }, 500);
+      // Scroll window to bottom
+      window.scrollTo(0, document.body.scrollHeight);
 
-    // Fallback timeout
+      if (scrollAttempts >= maxScrollAttempts) {
+        console.log('Max window scroll attempts reached');
+        clearInterval(scrollInterval);
+        resolve();
+        return;
+      }
+    }, 300);
+
     setTimeout(() => {
+      console.log('Window scroll timeout');
       clearInterval(scrollInterval);
       resolve();
-    }, 10000); // 10 second timeout
+    }, 8000);
   });
 }
 

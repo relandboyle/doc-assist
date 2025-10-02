@@ -69,6 +69,14 @@ function isJobSearchPage() {
   return pathname.match(/^\/jobs\/search\/?/);
 }
 
+function isAnyJobsPage() {
+  const pathname = window.location.pathname;
+
+  // Check if we're on any LinkedIn jobs page
+  // Pattern: /jobs/ followed by anything
+  return pathname.match(/^\/jobs\//);
+}
+
 async function loadSavedPosition() {
   return new Promise((resolve) => {
     try {
@@ -97,6 +105,7 @@ window.DocTailorUtils = {
   getAppOrigin,
   isJobViewPage,
   isJobSearchPage,
+  isAnyJobsPage,
   loadSavedPosition,
   openDocTailor
 };

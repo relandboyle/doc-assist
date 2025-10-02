@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Doc Tailor for LinkedIn Jobs",
+  "version": "0.1.0",
+  "description": "Adds a 'Doc Tailor' button on LinkedIn Jobs to open Doc Tailor builder with job context.",
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.linkedin.com/jobs/view/*",
+        "https://linkedin.com/jobs/view/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icon.png"],
+      "matches": ["https://www.linkedin.com/*", "https://linkedin.com/*"]
+    }
+  ]
+}
+
+

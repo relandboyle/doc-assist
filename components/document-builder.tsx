@@ -785,10 +785,47 @@ export function DocumentBuilder() {
                     View Document History
                   </Button>
                   <Button
-                    onClick={() => {
-                      const fileName = (clName || 'Cover Letter').replace(/\s+/g, ' ').trim()
-                      const url = `/api/export/pdf?documentId=${encodeURIComponent(generatedCLId || '')}&fileName=${encodeURIComponent(fileName)}`
-                      window.open(url, '_blank', 'noopener,noreferrer')
+                    onClick={async () => {
+                      if (!generatedCLId) {
+                        toast({ title: 'Error', description: 'No document ID available for download.', variant: 'destructive' })
+                        return
+                      }
+
+                      try {
+                        const fileName = (clName || 'Cover Letter').replace(/\s+/g, ' ').trim()
+                        const response = await fetch('/api/export/pdf', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            documentId: generatedCLId,
+                            fileName: fileName
+                          })
+                        })
+
+                        if (!response.ok) {
+                          throw new Error('Failed to export PDF')
+                        }
+
+                        // Get the PDF blob
+                        const blob = await response.blob()
+
+                        // Create download link
+                        const url = window.URL.createObjectURL(blob)
+                        const link = document.createElement('a')
+                        link.href = url
+                        link.download = `${fileName}.pdf`
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                        window.URL.revokeObjectURL(url)
+
+                        toast({ title: 'PDF Downloaded', description: 'Your cover letter has been downloaded as PDF.' })
+                      } catch (error) {
+                        console.error('Error downloading PDF:', error)
+                        toast({ title: 'Download Failed', description: 'Failed to download PDF. Please try again.', variant: 'destructive' })
+                      }
                     }}
                     className="bg-primary text-primary-foreground w-full sm:w-auto"
                   >

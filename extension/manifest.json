@@ -18,7 +18,7 @@
         "https://www.linkedin.com/jobs/*",
         "https://linkedin.com/jobs/*"
       ],
-      "js": ["utils.js", "ui.js", "job-handlers.js", "content.js"],
+      "js": ["utils.js", "ui.js", "job-scroller.js", "modal-utils.js", "job-opener.js", "doc-tailor-opener.js", "job-handlers.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

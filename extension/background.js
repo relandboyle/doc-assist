@@ -70,7 +70,7 @@ async function handleCreateDocTailorTab(request, sender, sendResponse) {
       const newTab = await chrome.tabs.create({
         url: url,
         index: targetIndex,
-        active: false
+        active: false  // Keep focus on original tab
       });
 
       console.log(`Background: Doc-Tailor tab created at correct position for job ${tabIndex}`);
@@ -91,10 +91,10 @@ async function handleCreateDocTailorTabAtEnd(request, sender, sendResponse) {
 
     console.log(`Background: Creating Doc-Tailor tab at end for job ${tabIndex}`);
 
-    // Create the Doc-Tailor tab at the end (default position)
+    // Create the Doc-Tailor tab at the end (default position) without stealing focus
     const newTab = await chrome.tabs.create({
       url: url,
-      active: false
+      active: false  // Keep focus on original tab
     });
 
     console.log(`Background: Doc-Tailor tab created at end with ID ${newTab.id}`);
